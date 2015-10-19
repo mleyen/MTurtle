@@ -7,9 +7,10 @@
 #include <math.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
-/*#include <SDL/SDL_rotozoom.h>*/
+#include <SDL/SDL_ttf.h>
 #include "SDL_rotozoom.h"
 #include "SDL_draw.h"
+#include "MTurtle_utility.h"
 
 #define BITS_PER_PIXEL 32
 #define PI 3.14159265
@@ -17,6 +18,7 @@
 
 SDL_Surface* tt_screen;
 SDL_Surface* tt_baseCursor;
+TTF_Font* tt_font;
 
 /**
  * The Turtle struct. Describes a turtle cursor, with its position,
@@ -65,6 +67,14 @@ void TT_Init(const char* title, int w, int h)
 
     /* Make Default Cursor Surface */
     tt_baseCursor = IMG_Load("triangle3.png");
+
+    /* Init SDL_ttf */
+    if(TTF_Init() == -1)
+    {
+        fprintf(stderr, "TTF_Init() failed: %s\n", TTF_GetError());
+        exit(EXIT_FAILURE);
+    }
+    tt_font = TTF_OpenFont("trisk.ttf", 13);
 }
 
 /**
@@ -198,6 +208,8 @@ void TT_Destroy(struct Turtle* turt)
  */
 void TT_EndProgram()
 {
+    TTF_CloseFont(tt_font);
+    TTF_Quit();
     SDL_Quit();
 }
 
@@ -227,7 +239,6 @@ void TT_MoveTo(struct Turtle* turt, int x, int y)
     if(turt->isDrawing)
     {
         Draw_Line(turt->surface, turt->x, turt->y, x, y, turt->color);
-        /* TODO rotate cursor */
     }
 
     turt->x = x;
@@ -280,10 +291,23 @@ void TT_Backward(struct Turtle* turt, int distance)
     TT_Forward(turt, -distance);
 }
 
+void TT_Home(struct Turtle* turt)
+{
+    turt->x = turt->surface->w / 2;
+    turt->y = turt->surface->h / 2;
+    turt->angle = 0.0;
+}
+
 void TT_Clear(struct Turtle* turt)
 {
     /* Init Surface */
     SDL_FillRect(turt->surface, NULL, turt->bgColor);
+}
+
+void TT_Reset(struct Turtle* turt)
+{
+    TT_Clear(turt);
+    TT_Home(turt);
 }
 
 void TT_PenUp(struct Turtle* turt)
@@ -304,6 +328,16 @@ void TT_ShowTurtle(struct Turtle* turt)
 void TT_HideTurtle(struct Turtle* turt)
 {
     turt->isVisible = false;
+}
+
+void TT_WriteText(struct Turtle* turt, const char* str)
+{
+    SDL_Surface* text = TTF_RenderText_Blended(tt_font, str, translate_color(turt->color));
+    SDL_Rect pos;
+    pos.x = turt->x;
+    pos.y = turt->y;
+    SDL_BlitSurface(text, NULL, turt->surface, &pos);
+    SDL_FreeSurface(text);
 }
 
 #endif /* __MTURTLE_H_ */

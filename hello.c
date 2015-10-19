@@ -20,6 +20,8 @@ int main(void)
     TT_Forward(turt, 80);
     TT_Right(turt, 90.0f);
 
+    TT_WriteText(turt, "Hello World!");
+
     while(TT_MainLoop(turt))
     {
         /* void */

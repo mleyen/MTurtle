@@ -25,4 +25,5 @@ include(deployment.pri)
 qtcAddDeployment()
 
 HEADERS += \
-    MTurtle.h
+    MTurtle.h \
+    MTurtle_utility.h
