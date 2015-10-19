@@ -1,18 +1,23 @@
 CPP=gcc
-CFLAGS=-O3
-LDFLAGS=-lSDL
+CFLAGS=-O3 -I /usr/local/include -I /usr/include -I /usr/include/SDL -I /usr/local/include/SDL
+LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lm
 
-all: main
+all: hello spirale
 
-main: main.o
-	${CPP} $(CFLAGS) -o hello main.o ${LDFLAGS}
+hello: hello.o
+	${CPP} $(CFLAGS) -o hello hello.o ${LDFLAGS}
 
-main.o: main.c
-	${CPP} $(CFLAGS) -o main.o -c main.c
+hello.o: hello.c
+	${CPP} $(CFLAGS) -o hello.o -c hello.c
 
+spirale: spirale.o
+	${CPP} $(CFLAGS) -o spirale spirale.o ${LDFLAGS}
+
+spirale.o: spirale.c
+	${CPP} $(CFLAGS) -o spirale.o -c spirale.c
 
 clean:	
-	rm -fr *.o
+	rm -rf *.o
 
 mrproper: clean
-	rm -fr hello
+	rm -rf hello spirale

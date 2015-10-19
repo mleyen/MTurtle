@@ -6,9 +6,17 @@
 #include <stdbool.h>
 #include <math.h>
 #include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+/*#include <SDL/SDL_rotozoom.h>*/
+#include "SDL_rotozoom.h"
 #include "SDL_draw.h"
 
+#define BITS_PER_PIXEL 32
+#define PI 3.14159265
+#define RAD2DEG PI / 180.0
+
 SDL_Surface* tt_screen;
+SDL_Surface* tt_baseCursor;
 
 /**
  * The Turtle struct. Describes a turtle cursor, with its position,
@@ -22,10 +30,10 @@ struct Turtle
     bool isDrawing;             /* is the pen up or down? */
     bool isVisible;             /* is the turtle visible or not? */
     Uint32 color;               /* line color */
-    Uint32 cursorColor;         /* turtle color */
+    Uint32 cursorColor;         /* turtle color (unused?)*/
     Uint32 bgColor;             /* fill color */
     SDL_Surface* surface;       /* SDL surface for the turtle screen */
-    SDL_Surface* cursorSurface; /* SDL surface for the turtle cursor */
+    /*SDL_Surface* cursorSurface;*/ /* SDL surface for the turtle cursor */
 };
 
 /**
@@ -40,12 +48,12 @@ void TT_Init(const char* title, int w, int h)
     /* Init SDL */
     if(SDL_Init(SDL_INIT_VIDEO) == -1)
     {
-        fprintf(stderr, "SDL_Init() failed\: %s\n", SDL_GetError());
+        fprintf(stderr, "SDL_Init() failed: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
 
     /* Init Screen Surface */
-    tt_screen = SDL_SetVideoMode(w, h, 32, SDL_HWSURFACE);
+    tt_screen = SDL_SetVideoMode(w, h, BITS_PER_PIXEL, SDL_HWSURFACE);
     if(tt_screen == NULL)
     {
         fprintf(stderr, "SDL_SetVideoMode() failed: %s\n", SDL_GetError());
@@ -55,7 +63,8 @@ void TT_Init(const char* title, int w, int h)
     /* Set Window Title */
     SDL_WM_SetCaption(title, NULL);
 
-    /* TODO Make Default Cursor Surface */
+    /* Make Default Cursor Surface */
+    tt_baseCursor = IMG_Load("triangle3.png");
 }
 
 /**
@@ -77,12 +86,12 @@ struct Turtle* TT_Create(int w, int h, int r, int g, int b)
     turt->angle = 0;
     turt->isDrawing = false;
     turt->isVisible = true;
-    turt->color = SDL_MapRGB(255, 255, 255); /* white */
-    turt->cursorColor = SDL_MapRGB(255, 0, 0); /* red */
-    turt->bgColor = SDL_MapRGB(r, g, b);
-    turt->surface = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0, 0, 0, 0);
+
+    turt->surface = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, BITS_PER_PIXEL, 0, 0, 0, 0);
     /*turt->cursorSurface = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0, 0, 0, 0);*/
-    /* TODO find sprite for cursor */
+    /*turt->cursorSurface = rotozoomSurface(tt_baseCursor, angle, 1.0, 1);*/ /* can be done in the main loop? */
+
+    /* TODO find better sprite for cursor? */
 
     /* Error Control */
     if(turt->surface == NULL /*|| turt->cursorSurface == NULL*/)
@@ -91,8 +100,13 @@ struct Turtle* TT_Create(int w, int h, int r, int g, int b)
         exit(EXIT_FAILURE);
     }
 
+    turt->color = SDL_MapRGB(turt->surface->format, 255, 255, 255); /* white */
+    turt->cursorColor = SDL_MapRGB(turt->surface->format, 255, 0, 0); /* red */
+    turt->bgColor = SDL_MapRGB(turt->surface->format, r, g, b);
+
     /* Init Surface */
     SDL_FillRect(turt->surface, NULL, turt->bgColor);
+    /*printf("Base: x=%d y=%d angle=%f\n", turt->x, turt->y, turt->angle);*/
 
     return turt;
 }
@@ -116,11 +130,13 @@ void TT_WaitUserExit()
 }
 
 /**
- * Check if we should keep running the application
+ * Check if we should keep running the application, then redraws the
+ * screen (blits main surface and cursor)
  * @return true until the user closes the window or presses ESC / Q
  */
-bool TT_MainLoop()
+bool TT_MainLoop(struct Turtle* turt)
 {
+    /* Check for User Exit */
     SDL_Event ev;
     SDL_PollEvent(&ev);
 
@@ -137,6 +153,31 @@ bool TT_MainLoop()
             return false;
         }
     }
+
+    /* Clear Screen */
+    SDL_FillRect(tt_screen, NULL, turt->bgColor);
+
+    /* Paint Turtle Surface (aka current trails) */
+    SDL_Rect surfacePos;
+    surfacePos.x = 0;
+    surfacePos.y = 0;
+    SDL_BlitSurface(turt->surface, NULL, tt_screen, &surfacePos);
+
+    /* Paint Cursor as Necessary */
+    if(turt->isVisible)
+    {
+        SDL_Surface* cursor = rotozoomSurface(tt_baseCursor, -abs(turt->angle), 1.0, 1);
+        SDL_Rect cursorPos;
+        cursorPos.x = turt->x - cursor->w / 2;
+        cursorPos.y = turt->y - cursor->h / 2;
+
+        SDL_BlitSurface(cursor, NULL, tt_screen, &cursorPos);
+
+        SDL_FreeSurface(cursor);
+    }
+
+    /* Refresh Window */
+    SDL_Flip(tt_screen);
 
     return true;
 }
@@ -180,6 +221,8 @@ void TT_SetColor(struct Turtle* turt, Uint32 r, Uint32 g, Uint32 b)
  */
 void TT_MoveTo(struct Turtle* turt, int x, int y)
 {
+    /*printf("Destination: x=%d y=%d\n", x, y);*/
+
     /* Draw Line as Necessary */
     if(turt->isDrawing)
     {
@@ -198,7 +241,8 @@ void TT_MoveTo(struct Turtle* turt, int x, int y)
  */
 void TT_Left(struct Turtle* turt, float deg)
 {
-    turt->angle = (turt->angle + deg) % 360f; /* counterclockwise */
+    turt->angle = fmod(turt->angle + deg, 360.0f); /* counterclockwise */
+    /*printf("Angle: %f\n", turt->angle);*/
 }
 
 /**
@@ -208,7 +252,8 @@ void TT_Left(struct Turtle* turt, float deg)
  */
 void TT_Right(struct Turtle* turt, float deg)
 {
-    turt->angle = (turt->angle - deg) % 360f; /* clockwise */
+    turt->angle = fmod(turt->angle - deg, 360.0f); /* clockwise */
+    /*printf("Angle: %f\n", turt->angle);*/
 }
 
 /**
@@ -219,8 +264,13 @@ void TT_Right(struct Turtle* turt, float deg)
 void TT_Forward(struct Turtle* turt, int distance)
 {
     /* Evaluate Dest Location from Polar Coordinates */
-    int x = turt->x + (distance * cos(turt->angle));
-    int y = turt->y + (distance * sin(turt->angle));
+    double offset_x = distance * cos(abs(turt->angle) * RAD2DEG);
+    /*printf("offset_x=%f ", offset_x);*/
+    double offset_y = distance * sin(abs(turt->angle) * RAD2DEG);
+    /*printf("offset_y=%f\n", offset_y);*/
+
+    int x = turt->x + round(offset_x);
+    int y = turt->y + round(offset_y);
 
     TT_MoveTo(turt, x, y);
 }
@@ -244,6 +294,16 @@ void TT_PenUp(struct Turtle* turt)
 void TT_PenDown(struct Turtle* turt)
 {
     turt->isDrawing = true;
+}
+
+void TT_ShowTurtle(struct Turtle* turt)
+{
+    turt->isVisible = true;
+}
+
+void TT_HideTurtle(struct Turtle* turt)
+{
+    turt->isVisible = false;
 }
 
 #endif /* __MTURTLE_H_ */

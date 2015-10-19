@@ -17,7 +17,9 @@ CONFIG -= qt
 ##LIBS +=-L/usr/lib/x86_64-linux-gnu/libSDL-1.2.so.0.11.4
 #}
 
-SOURCES += main.c
+SOURCES += \
+    hello.c \
+    spirale.c
 
 include(deployment.pri)
 qtcAddDeployment()
