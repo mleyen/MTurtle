@@ -61,8 +61,9 @@ struct Turtle* TT_Create(int w, int h, int r, int g, int b);
 void TT_WaitUserExit();
 
 /**
- * Check if we should keep running the application, then redraws the
- * screen (blits main surface and cursor)
+ * Waits for user events (mouse click, key press, quit...), then
+ * processes these events and redraws the screen (trails + cursor)
+ * @param turt
  * @return true until the user closes the window or presses ESC / Q
  */
 bool TT_MainLoop(struct Turtle* turt);
