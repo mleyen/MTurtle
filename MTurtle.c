@@ -144,8 +144,9 @@ void TT_WaitUserExit()
 }
 
 /**
- * Check if we should keep running the application, then redraws the
- * screen (blits main surface and cursor)
+ * Waits for user events (mouse click, key press, quit...), then
+ * processes these events and redraws the screen (trails + cursor)
+ * @param turt
  * @return true until the user closes the window or presses ESC / Q
  */
 bool TT_MainLoop(struct Turtle* turt)
@@ -266,16 +267,16 @@ void TT_MoveTo(struct Turtle* turt, int x, int y)
             /* Push Vertex */
             turt->fillX[turt->fillIndex] = x;
             turt->fillY[turt->fillIndex] = y;
-            printf("Push [%d, %d] to vertex array (count=%d; max=%d)\n",
-                   x, y, turt->fillIndex, turt->fillCount);
+            /*printf("Push [%d, %d] to vertex array (count=%d; max=%d)\n",
+                   x, y, turt->fillIndex, turt->fillCount);*/
             turt->fillIndex ++;
         }
 
         if(turt->fillIndex >= turt->fillCount)
         {
             /* Do Fill */
-            int result = filledPolygonColor(turt->surface, turt->fillX, turt->fillY, turt->fillCount, turt->fillColor);
-            printf("End fill, filledPolygonColor returned %d\n", result);
+            filledPolygonColor(turt->surface, turt->fillX, turt->fillY, turt->fillCount, turt->fillColor);
+            /*printf("End fill");*/
             turt->isFilling = false;
             free(turt->fillX);
             free(turt->fillY);
@@ -324,11 +325,20 @@ void TT_Forward(struct Turtle* turt, int distance)
     TT_MoveTo(turt, x, y);
 }
 
+/**
+ * Moves the turtle backward
+ * @param turt
+ * @param distance
+ */
 void TT_Backward(struct Turtle* turt, int distance)
 {
     TT_Forward(turt, -distance);
 }
 
+/**
+ * Moves the turtle to its origin (without drawing)
+ * @param turt
+ */
 void TT_Home(struct Turtle* turt)
 {
     turt->x = turt->surface->w / 2;
@@ -336,38 +346,67 @@ void TT_Home(struct Turtle* turt)
     turt->angle = 0.0;
 }
 
+/**
+ * Clears the drawing surface
+ * @param turt
+ */
 void TT_Clear(struct Turtle* turt)
 {
     /* Init Surface */
     SDL_FillRect(turt->surface, NULL, turt->bgColor);
 }
 
+/**
+ * Clears the drawing surface and sends the turtle home
+ * @param turt
+ */
 void TT_Reset(struct Turtle* turt)
 {
     TT_Clear(turt);
     TT_Home(turt);
 }
 
+/**
+ * Stop drawing
+ * @param turt
+ */
 void TT_PenUp(struct Turtle* turt)
 {
     turt->isDrawing = false;
 }
 
+/**
+ * Start drawing
+ * @param turt
+ */
 void TT_PenDown(struct Turtle* turt)
 {
     turt->isDrawing = true;
 }
 
+/**
+ * Makes the turtle visible
+ * @param turt
+ */
 void TT_ShowTurtle(struct Turtle* turt)
 {
     turt->isVisible = true;
 }
 
+/**
+ * Makes the turtle invisible (better for finished drawings)
+ * @param turt
+ */
 void TT_HideTurtle(struct Turtle* turt)
 {
     turt->isVisible = false;
 }
 
+/**
+ * Writes text at the current position of the turtle
+ * @param turt
+ * @param str
+ */
 void TT_WriteText(struct Turtle* turt, const char* str)
 {
     SDL_Surface* text = TTF_RenderText_Blended(tt_font, str, translate_color(turt->color));
@@ -382,6 +421,12 @@ void TT_WriteText(struct Turtle* turt, const char* str)
  * Event API
  */
 
+/**
+ * Add handler function to mouse clicks
+ * @param turt
+ * @param func the function to be called; takes 2 int parameters
+ * representing the X and Y click coordinates, returns nothing
+ */
 void TT_OnClick(struct Turtle* turt, void (*func)(int, int))
 {
     turt->onclick = func;
@@ -391,25 +436,28 @@ void TT_OnClick(struct Turtle* turt, void (*func)(int, int))
  * Fill API
  */
 
+/**
+ * Starts filling a region of the drawing surface
+ * @param turt
+ * @param count number of vertices in the polygon to fill
+ * @param r fill color (red component)
+ * @param g fill color (green component)
+ * @param b fill color (blue component)
+ */
 void TT_BeginFill(struct Turtle* turt, int count, Uint32 r, Uint32 g, Uint32 b)
 {
+    /* No Double Call */
     if(turt->isFilling)
     {
         fprintf(stderr, "TT_BeginFill: already filling!\n");
         return;
     }
 
+    /* Init Variables */
     turt->fillCount = count;
-    //turt->fillColor = SDL_MapRGBA(turt->surface->format, r, g, b, 255);
     turt->fillColor = (r << 24) | (g << 16) | (b << 8) | 0xFF;
     turt->fillX = malloc(sizeof(int) * count);
     turt->fillY = malloc(sizeof(int) * count);
-    printf("Begin fill using r=%d g=%d b=%d\n", r, g, b);
-
-    turt->fillX[0] = turt->x;
-    turt->fillY[0] = turt->y;
-    printf("Push [%d, %d] to vertex array (count=%d; max=%d)\n",
-           turt->x, turt->y, 0, turt->fillCount);
 
     /* Error Control */
     if(turt->fillX == NULL || turt->fillY == NULL)
@@ -417,6 +465,14 @@ void TT_BeginFill(struct Turtle* turt, int count, Uint32 r, Uint32 g, Uint32 b)
         fprintf(stderr, "TT_BeginFill: malloc failed!\n");
         exit(EXIT_FAILURE);
     }
+
+    /*printf("Begin fill using r=%d g=%d b=%d\n", r, g, b);*/
+
+    /* Push First Vertex */
+    turt->fillX[0] = turt->x;
+    turt->fillY[0] = turt->y;
+    /*printf("Push [%d, %d] to vertex array (count=%d; max=%d)\n",
+           turt->x, turt->y, 0, turt->fillCount);*/
 
     turt->isFilling = true;
     turt->fillIndex = 1;

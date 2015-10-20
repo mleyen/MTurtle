@@ -117,34 +117,86 @@ void TT_Right(struct Turtle* turt, float deg);
  */
 void TT_Forward(struct Turtle* turt, int distance);
 
+/**
+ * Moves the turtle backward
+ * @param turt
+ * @param distance
+ */
 void TT_Backward(struct Turtle* turt, int distance);
 
+/**
+ * Moves the turtle to its origin (without drawing)
+ * @param turt
+ */
 void TT_Home(struct Turtle* turt);
 
+/**
+ * Clears the drawing surface
+ * @param turt
+ */
 void TT_Clear(struct Turtle* turt);
 
+/**
+ * Clears the drawing surface and sends the turtle home
+ * @param turt
+ */
 void TT_Reset(struct Turtle* turt);
 
+/**
+ * Stop drawing
+ * @param turt
+ */
 void TT_PenUp(struct Turtle* turt);
 
+/**
+ * Start drawing
+ * @param turt
+ */
 void TT_PenDown(struct Turtle* turt);
 
+/**
+ * Makes the turtle visible
+ * @param turt
+ */
 void TT_ShowTurtle(struct Turtle* turt);
 
+/**
+ * Makes the turtle invisible (better for finished drawings)
+ * @param turt
+ */
 void TT_HideTurtle(struct Turtle* turt);
 
+/**
+ * Writes text at the current position of the turtle
+ * @param turt
+ * @param str
+ */
 void TT_WriteText(struct Turtle* turt, const char* str);
 
 /*
  * Event API
  */
 
+/**
+ * Add handler function to mouse clicks
+ * @param turt
+ * @param func the function to be called; takes 2 int parameters
+ * representing the X and Y click coordinates, returns nothing
+ */
 void TT_OnClick(struct Turtle* turt, void (*func)(int, int));
 
 /*
  * Fill API
  */
 
+/**
+ * Starts filling a region of the drawing surface
+ * @param turt
+ * @param count number of vertices in the polygon to fill
+ * @param r fill color (red component)
+ * @param g fill color (green component)
+ * @param b fill color (blue component)
+ */
 void TT_BeginFill(struct Turtle* turt, int count, Uint32 r, Uint32 g, Uint32 b);
 
 #endif /* __MTURTLE_H_ */
