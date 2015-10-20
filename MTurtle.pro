@@ -20,7 +20,9 @@ CONFIG -= qt
 SOURCES += \
     hello.c \
     spirale.c \
-    MTurtle.c
+    MTurtle.c \
+    draw.c \
+    lantern.c
 
 include(deployment.pri)
 qtcAddDeployment()

@@ -23,10 +23,16 @@ struct Turtle
     bool isDrawing;             /* is the pen up or down? */
     bool isVisible;             /* is the turtle visible or not? */
     Uint32 color;               /* line color */
-    Uint32 cursorColor;         /* turtle color (unused?)*/
-    Uint32 bgColor;             /* fill color */
+    Uint32 bgColor;             /* background color */
+
+    Uint32 fillColor;           /* shape fill color */
+    Sint16* fillX;              /* shape fill vertex array (X) */
+    Sint16* fillY;              /* shape fill vertex array (Y) */
+    int fillCount;              /* shape fill vertex count */
+    int fillIndex;              /* shape fill current vertex */
+    bool isFilling;             /* are we currently filling a polygon? */
     SDL_Surface* surface;       /* SDL surface for the turtle screen */
-    /*SDL_Surface* cursorSurface;*/ /* SDL surface for the turtle cursor */
+    void (*onclick)(int, int);  /* click event handler func */
 };
 
 /**
@@ -128,5 +134,17 @@ void TT_ShowTurtle(struct Turtle* turt);
 void TT_HideTurtle(struct Turtle* turt);
 
 void TT_WriteText(struct Turtle* turt, const char* str);
+
+/*
+ * Event API
+ */
+
+void TT_OnClick(struct Turtle* turt, void (*func)(int, int));
+
+/*
+ * Fill API
+ */
+
+void TT_BeginFill(struct Turtle* turt, int count, Uint32 r, Uint32 g, Uint32 b);
 
 #endif /* __MTURTLE_H_ */

@@ -6,6 +6,7 @@
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
 #include "SDL_rotozoom.h"
+#include "SDL_gfxPrimitives.h"
 #include "SDL_draw.h"
 #include "MTurtle.h"
 
@@ -34,6 +35,12 @@ SDL_Color translate_color(Uint32 int_color)
 0x0000ff00)/0x100,(int_color & 0x00ff0000)/0x10000,0};
     #endif
     return color;
+}
+
+float mod(float x, float y)
+{
+    float r = fmod(x, y);
+    return r < 0 ? r + y : r;
 }
 
 
@@ -95,22 +102,20 @@ struct Turtle* TT_Create(int w, int h, int r, int g, int b)
     turt->angle = 0;
     turt->isDrawing = false;
     turt->isVisible = true;
+    turt->onclick = NULL; /* sorry for the null pointer */
 
     turt->surface = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, BITS_PER_PIXEL, 0, 0, 0, 0);
-    /*turt->cursorSurface = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, 32, 0, 0, 0, 0);*/
-    /*turt->cursorSurface = rotozoomSurface(tt_baseCursor, angle, 1.0, 1);*/ /* can be done in the main loop? */
 
     /* TODO find better sprite for cursor? */
 
     /* Error Control */
-    if(turt->surface == NULL /*|| turt->cursorSurface == NULL*/)
+    if(turt->surface == NULL)
     {
         fprintf(stderr, "TT_Create() failed: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
 
     turt->color = SDL_MapRGB(turt->surface->format, 255, 255, 255); /* white */
-    turt->cursorColor = SDL_MapRGB(turt->surface->format, 255, 0, 0); /* red */
     turt->bgColor = SDL_MapRGB(turt->surface->format, r, g, b);
 
     /* Init Surface */
@@ -145,10 +150,11 @@ void TT_WaitUserExit()
  */
 bool TT_MainLoop(struct Turtle* turt)
 {
-    /* Check for User Exit */
+    /* Check for User Events */
     SDL_Event ev;
-    SDL_PollEvent(&ev);
+    SDL_WaitEvent(&ev);
 
+    /* User Exit */
     if(ev.type == SDL_QUIT)
     {
         return false;
@@ -161,6 +167,14 @@ bool TT_MainLoop(struct Turtle* turt)
         {
             return false;
         }
+    }
+
+    /* User Mouse Click */
+    if(ev.type == SDL_MOUSEBUTTONUP && ev.button.button == SDL_BUTTON_LEFT
+            && turt->onclick != NULL)
+    {
+        /*printf("Click @ x=%d y=%d\n", ev.button.x, ev.button.y);*/
+        turt->onclick(ev.button.x, ev.button.y);
     }
 
     /* Clear Screen */
@@ -240,8 +254,33 @@ void TT_MoveTo(struct Turtle* turt, int x, int y)
         Draw_Line(turt->surface, turt->x, turt->y, x, y, turt->color);
     }
 
+    /* Move Turtle */
     turt->x = x;
     turt->y = y;
+
+    /* Fill Shape */
+    if(turt->isFilling)
+    {
+        if(turt->fillIndex < turt->fillCount)
+        {
+            /* Push Vertex */
+            turt->fillX[turt->fillIndex] = x;
+            turt->fillY[turt->fillIndex] = y;
+            printf("Push [%d, %d] to vertex array (count=%d; max=%d)\n",
+                   x, y, turt->fillIndex, turt->fillCount);
+            turt->fillIndex ++;
+        }
+
+        if(turt->fillIndex >= turt->fillCount)
+        {
+            /* Do Fill */
+            int result = filledPolygonColor(turt->surface, turt->fillX, turt->fillY, turt->fillCount, turt->fillColor);
+            printf("End fill, filledPolygonColor returned %d\n", result);
+            turt->isFilling = false;
+            free(turt->fillX);
+            free(turt->fillY);
+        }
+    }
 }
 
 /**
@@ -251,7 +290,7 @@ void TT_MoveTo(struct Turtle* turt, int x, int y)
  */
 void TT_Left(struct Turtle* turt, float deg)
 {
-    turt->angle = fmod(turt->angle + deg, 360.0f); /* counterclockwise */
+    turt->angle = mod(turt->angle - deg, 360.0f); /* clockwise */
     /*printf("Angle: %f\n", turt->angle);*/
 }
 
@@ -262,7 +301,7 @@ void TT_Left(struct Turtle* turt, float deg)
  */
 void TT_Right(struct Turtle* turt, float deg)
 {
-    turt->angle = fmod(turt->angle - deg, 360.0f); /* clockwise */
+    turt->angle = mod(turt->angle + deg, 360.0f); /* counterclockwise */
     /*printf("Angle: %f\n", turt->angle);*/
 }
 
@@ -337,4 +376,48 @@ void TT_WriteText(struct Turtle* turt, const char* str)
     pos.y = turt->y;
     SDL_BlitSurface(text, NULL, turt->surface, &pos);
     SDL_FreeSurface(text);
+}
+
+/*
+ * Event API
+ */
+
+void TT_OnClick(struct Turtle* turt, void (*func)(int, int))
+{
+    turt->onclick = func;
+}
+
+/*
+ * Fill API
+ */
+
+void TT_BeginFill(struct Turtle* turt, int count, Uint32 r, Uint32 g, Uint32 b)
+{
+    if(turt->isFilling)
+    {
+        fprintf(stderr, "TT_BeginFill: already filling!\n");
+        return;
+    }
+
+    turt->fillCount = count;
+    //turt->fillColor = SDL_MapRGBA(turt->surface->format, r, g, b, 255);
+    turt->fillColor = (r << 24) | (g << 16) | (b << 8) | 0xFF;
+    turt->fillX = malloc(sizeof(int) * count);
+    turt->fillY = malloc(sizeof(int) * count);
+    printf("Begin fill using r=%d g=%d b=%d\n", r, g, b);
+
+    turt->fillX[0] = turt->x;
+    turt->fillY[0] = turt->y;
+    printf("Push [%d, %d] to vertex array (count=%d; max=%d)\n",
+           turt->x, turt->y, 0, turt->fillCount);
+
+    /* Error Control */
+    if(turt->fillX == NULL || turt->fillY == NULL)
+    {
+        fprintf(stderr, "TT_BeginFill: malloc failed!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    turt->isFilling = true;
+    turt->fillIndex = 1;
 }
