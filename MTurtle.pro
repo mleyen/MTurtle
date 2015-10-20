@@ -19,11 +19,14 @@ CONFIG -= qt
 
 SOURCES += \
     hello.c \
-    spirale.c
+    spirale.c \
+    MTurtle.c
 
 include(deployment.pri)
 qtcAddDeployment()
 
 HEADERS += \
-    MTurtle.h \
-    MTurtle_utility.h
+    MTurtle.h
+
+OTHER_FILES += \
+    Makefile

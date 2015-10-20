@@ -4,14 +4,20 @@ LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lm
 
 all: hello spirale
 
-hello: hello.o
-	${CPP} $(CFLAGS) -o hello hello.o ${LDFLAGS}
+#MTurtle: MTurtle.o
+#	${CPP} $(CFLAGS) -o hello hello.o ${LDFLAGS}
+
+MTurtle.o: MTurtle.c
+	${CPP} $(CFLAGS) -o MTurtle.o -c MTurtle.c
+
+hello: hello.o MTurtle.o
+	${CPP} $(CFLAGS) -o hello hello.o MTurtle.o ${LDFLAGS}
 
 hello.o: hello.c
 	${CPP} $(CFLAGS) -o hello.o -c hello.c
 
-spirale: spirale.o
-	${CPP} $(CFLAGS) -o spirale spirale.o ${LDFLAGS}
+spirale: spirale.o MTurtle.o
+	${CPP} $(CFLAGS) -o spirale spirale.o MTurtle.o ${LDFLAGS}
 
 spirale.o: spirale.c
 	${CPP} $(CFLAGS) -o spirale.o -c spirale.c
