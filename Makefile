@@ -2,7 +2,7 @@ CPP=gcc
 CFLAGS=-O3 -I /usr/local/include -I /usr/include -I /usr/include/SDL -I /usr/local/include/SDL
 LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lm
 
-all: hello spirale draw lantern
+all: hello spirale draw lantern olympics
 
 MTurtle.o: MTurtle.c
 	${CPP} $(CFLAGS) -o MTurtle.o -c MTurtle.c
@@ -31,8 +31,14 @@ lantern: lantern.o MTurtle.o
 lantern.o: lantern.c
 	${CPP} $(CFLAGS) -o lantern.o -c lantern.c
 
+olympics: olympics.o MTurtle.o
+	${CPP} $(CFLAGS) -o olympics olympics.o MTurtle.o ${LDFLAGS}
+
+olympics.o: olympics.c
+	${CPP} $(CFLAGS) -o olympics.o -c olympics.c
+
 clean:	
 	rm -rf *.o
 
 mrproper: clean
-	rm hello spirale draw lantern
+	rm hello spirale draw lantern olympics

@@ -22,7 +22,8 @@ SOURCES += \
     spirale.c \
     MTurtle.c \
     draw.c \
-    lantern.c
+    lantern.c \
+    olympics.c
 
 include(deployment.pri)
 qtcAddDeployment()

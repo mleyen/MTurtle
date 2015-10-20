@@ -174,6 +174,10 @@ void TT_HideTurtle(struct Turtle* turt);
  */
 void TT_WriteText(struct Turtle* turt, const char* str);
 
+void TT_Circle(struct Turtle* turt, int radius);
+
+void TT_CenteredCircle(struct Turtle* turt, int radius);
+
 /*
  * Event API
  */

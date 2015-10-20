@@ -417,6 +417,23 @@ void TT_WriteText(struct Turtle* turt, const char* str)
     SDL_FreeSurface(text);
 }
 
+void TT_Circle(struct Turtle* turt, int radius)
+{
+    /* Center is R Units Left to Turtle */
+    double offset_x = radius * cos(mod(turt->angle - 90, 360.0f) * RAD2DEG);
+    double offset_y = radius * sin(mod(turt->angle - 90, 360.0f) * RAD2DEG);
+
+    int x = turt->x + round(offset_x);
+    int y = turt->y + round(offset_y);
+
+    Draw_Circle(turt->surface, x, y, radius, turt->color);
+}
+
+void TT_CenteredCircle(struct Turtle* turt, int radius)
+{
+    Draw_Circle(turt->surface, turt->x, turt->y, radius, turt->color);
+}
+
 /*
  * Event API
  */
