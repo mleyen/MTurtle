@@ -16,7 +16,7 @@
 
 /* TODO make these configurable at runtime? */
 #define TURTLE_SPRITE "triangle3.png"
-#define FONT_FILE "trisk.ttf"
+#define FONT_FILE "inconsolata-dz.ttf"
 #define FONT_SIZE 13 /* in pt */
 
 SDL_Surface* tt_screen;
@@ -129,24 +129,6 @@ struct Turtle* TT_Create(int w, int h, int r, int g, int b)
     /*printf("Base: x=%d y=%d angle=%f\n", turt->x, turt->y, turt->angle);*/
 
     return turt;
-}
-
-/**
- * Waits for the user to close the window or press ESC / Q.
- */
-void TT_WaitUserExit()
-{
-    int stop = 0;
-    SDL_Event ev;
-
-    while(!stop)
-    {
-        SDL_WaitEvent(&ev);
-        if(ev.type == SDL_QUIT)
-        {
-            stop = 1;
-        }
-    }
 }
 
 /**

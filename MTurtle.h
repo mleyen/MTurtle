@@ -57,11 +57,6 @@ void TT_Init(const char* title, int w, int h);
 struct Turtle* TT_Create(int w, int h, int r, int g, int b);
 
 /**
- * Waits for the user to close the window or press ESC / Q.
- */
-void TT_WaitUserExit();
-
-/**
  * Waits for user events (mouse click, key press, quit...), then
  * processes these events and redraws the screen (trails + cursor)
  * @param turt

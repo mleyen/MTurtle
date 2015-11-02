@@ -1,8 +1,8 @@
 CPP=gcc
 CFLAGS=-O3 -I /usr/local/include -I /usr/include -I /usr/include/SDL -I /usr/local/include/SDL
-LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lm
+LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lSDL_terminal -lm
 
-all: hello spirale draw lantern olympics limitTest
+all: hello spirale draw lantern olympics terminal_test
 
 MTurt.o: MTurt.c
 	${CPP} $(CFLAGS) -o MTurt.o -c MTurt.c
@@ -40,15 +40,15 @@ olympics: olympics.o MTurtle.o
 olympics.o: olympics.c
 	${CPP} $(CFLAGS) -o olympics.o -c olympics.c
 
-limitTest: limitTest.o MTurtle.o
-	${CPP} $(CFLAGS) -o limitTest limitTest.o MTurtle.o ${LDFLAGS}
+terminal_test: terminal_test.o MTurtle.o
+	${CPP} $(CFLAGS) -o terminal_test terminal_test.o MTurtle.o ${LDFLAGS}
 
-limitTest.o: limitTest.c
-	${CPP} $(CFLAGS) -o limitTest.o -c limitTest.c
+terminal_test.o: terminal_test.c
+	${CPP} $(CFLAGS) -o terminal_test.o -c terminal_test.c
 
 clean:	
 	rm -rf *.o
 
 mrproper: clean
-	rm hello spirale draw lantern olympics limitTest
+	rm hello spirale draw lantern olympics terminal_test
 
