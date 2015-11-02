@@ -1,34 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL/SDL.h>
-#include "MTurtle.h"
+#include "MTurt.h"
 
 int main(void)
 {
-    TT_Init("Hello World!", 640, 480);
+    TurtInit("Hello World!", 640, 480, 0, 0, 0);
 
-    struct Turtle* turt = TT_Create(640, 480, 0, 0, 0);
+    TurtPenDown();
 
-    TT_PenDown(turt);
+    TurtForward(80);
+    TurtRight(90.0f);
+    TurtForward(80);
+    TurtRight(90.0f);
+    TurtForward(80);
+    TurtRight(90.0f);
+    TurtForward(80);
+    TurtRight(90.0f);
 
-    TT_Forward(turt, 80);
-    TT_Right(turt, 90.0f);
-    TT_Forward(turt, 80);
-    TT_Right(turt, 90.0f);
-    TT_Forward(turt, 80);
-    TT_Right(turt, 90.0f);
-    TT_Forward(turt, 80);
-    TT_Right(turt, 90.0f);
+    TurtWriteText("Hello World!");
 
-    TT_WriteText(turt, "Hello World!");
-
-    while(TT_MainLoop(turt))
+    while(TurtMainLoop())
     {
         /* void */
     }
 
-    TT_Destroy(turt);
-
-    TT_EndProgram();
-    return EXIT_SUCCESS;
+    TurtExit(EXIT_SUCCESS);
 }

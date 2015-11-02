@@ -4,11 +4,14 @@ LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lm
 
 all: hello spirale draw lantern olympics limitTest
 
+MTurt.o: MTurt.c
+	${CPP} $(CFLAGS) -o MTurt.o -c MTurt.c
+
 MTurtle.o: MTurtle.c
 	${CPP} $(CFLAGS) -o MTurtle.o -c MTurtle.c
 
-hello: hello.o MTurtle.o
-	${CPP} $(CFLAGS) -o hello hello.o MTurtle.o ${LDFLAGS}
+hello: hello.o MTurt.o MTurtle.o
+	${CPP} $(CFLAGS) -o hello hello.o MTurt.o MTurtle.o ${LDFLAGS}
 
 hello.o: hello.c
 	${CPP} $(CFLAGS) -o hello.o -c hello.c
