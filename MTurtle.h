@@ -17,22 +17,23 @@
  */
 struct Turtle
 {
-    int x;                      /* cursor position (X) */
-    int y;                      /* cursor position (Y) */
-    float angle;                /* cursor orientation */
-    bool isDrawing;             /* is the pen up or down? */
-    bool isVisible;             /* is the turtle visible or not? */
-    Uint32 color;               /* line color */
-    Uint32 bgColor;             /* background color */
+    int x;                          /* cursor position (X) */
+    int y;                          /* cursor position (Y) */
+    float angle;                    /* cursor orientation */
+    bool isDrawing;                 /* is the pen up or down? */
+    bool isVisible;                 /* is the turtle visible or not? */
+    Uint32 color;                   /* line color */
+    Uint32 bgColor;                 /* background color */
 
-    Uint32 fillColor;           /* shape fill color */
-    Sint16* fillX;              /* shape fill vertex array (X) */
-    Sint16* fillY;              /* shape fill vertex array (Y) */
-    int fillCount;              /* shape fill vertex count */
-    int fillIndex;              /* shape fill current vertex */
-    bool isFilling;             /* are we currently filling a polygon? */
-    SDL_Surface* surface;       /* SDL surface for the turtle screen */
-    void (*onclick)(int, int);  /* click event handler func */
+    Uint32 fillColor;               /* shape fill color */
+    Sint16* fillX;                  /* shape fill vertex array (X) */
+    Sint16* fillY;                  /* shape fill vertex array (Y) */
+    int fillCount;                  /* shape fill vertex count */
+    int fillIndex;                  /* shape fill current vertex */
+    bool isFilling;                 /* are we currently filling a polygon? */
+    SDL_Surface* surface;           /* SDL surface for the turtle screen */
+    void (*onclick)(int, int);      /* click event handler func */
+    void (*onkeyb)(SDLKey, SDLMod); /* keyboard event handler func -- TODO avoid exposing SDL */
 };
 
 /**
@@ -189,6 +190,14 @@ void TT_CenteredCircle(struct Turtle* turt, int radius);
  * representing the X and Y click coordinates, returns nothing
  */
 void TT_OnClick(struct Turtle* turt, void (*func)(int, int));
+
+/**
+ * Add handler function to keyboard presses
+ * @param turt
+ * @param func the function to be called; takes 1 SDLKey
+ * and 1 SDLMod (for now), returns nothing
+ */
+void TT_OnKeyb(struct Turtle* turt, void (*func)(SDLKey, SDLMod));
 
 /*
  * Fill API

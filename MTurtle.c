@@ -14,6 +14,11 @@
 #define PI 3.14159265
 #define RAD2DEG PI / 180.0
 
+/* TODO make these configurable at runtime? */
+#define TURTLE_SPRITE "triangle3.png"
+#define FONT_FILE "trisk.ttf"
+#define FONT_SIZE 13 /* in pt */
+
 SDL_Surface* tt_screen;
 SDL_Surface* tt_baseCursor;
 TTF_Font* tt_font;
@@ -72,7 +77,7 @@ void TT_Init(const char* title, int w, int h)
     SDL_WM_SetCaption(title, NULL);
 
     /* Make Default Cursor Surface */
-    tt_baseCursor = IMG_Load("triangle3.png");
+    tt_baseCursor = IMG_Load(TURTLE_SPRITE);
 
     /* Init SDL_ttf */
     if(TTF_Init() == -1)
@@ -80,7 +85,7 @@ void TT_Init(const char* title, int w, int h)
         fprintf(stderr, "TTF_Init() failed: %s\n", TTF_GetError());
         exit(EXIT_FAILURE);
     }
-    tt_font = TTF_OpenFont("trisk.ttf", 13);
+    tt_font = TTF_OpenFont(FONT_FILE, FONT_SIZE);
 }
 
 /**
@@ -103,6 +108,7 @@ struct Turtle* TT_Create(int w, int h, int r, int g, int b)
     turt->isDrawing = false;
     turt->isVisible = true;
     turt->onclick = NULL; /* sorry for the null pointer */
+    turt->onkeyb = NULL;
 
     turt->surface = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, BITS_PER_PIXEL, 0, 0, 0, 0);
 
@@ -161,10 +167,15 @@ bool TT_MainLoop(struct Turtle* turt)
         return false;
     }
 
+    /* User Keyboard Press */
     if(ev.type == SDL_KEYDOWN)
     {
         SDLKey sym = ev.key.keysym.sym;
-        if(sym == SDLK_ESCAPE || sym == SDLK_q)
+        if(turt->onkeyb != NULL)
+        {
+            turt->onkeyb(sym, ev.key.keysym.mod);
+        }
+        else if(sym == SDLK_ESCAPE || sym == SDLK_q)
         {
             return false;
         }
@@ -247,6 +258,13 @@ void TT_SetColor(struct Turtle* turt, Uint32 r, Uint32 g, Uint32 b)
  */
 void TT_MoveTo(struct Turtle* turt, int x, int y)
 {
+    /* Boundary Check */
+    if(x < 0 || y < 0 || x >= turt->surface->w || y >= turt->surface->h)
+    {
+        fprintf(stderr, "TT_MoveTo: going outside world!\n");
+        exit(EXIT_FAILURE);
+    }
+
     /*printf("Destination: x=%d y=%d\n", x, y);*/
 
     /* Draw Line as Necessary */
@@ -321,6 +339,26 @@ void TT_Forward(struct Turtle* turt, int distance)
 
     int x = turt->x + round(offset_x);
     int y = turt->y + round(offset_y);
+
+    /* Boundary Check (X) */
+    if(x < 0)
+    {
+        x = 0;
+    }
+    else if(x >= turt->surface->w)
+    {
+        x = turt->surface->w - 1;
+    }
+
+    /* Boundary Check (Y) */
+    if(y < 0)
+    {
+        y = 0;
+    }
+    else if(y >= turt->surface->h)
+    {
+        y = turt->surface->h - 1;
+    }
 
     TT_MoveTo(turt, x, y);
 }
@@ -447,6 +485,17 @@ void TT_CenteredCircle(struct Turtle* turt, int radius)
 void TT_OnClick(struct Turtle* turt, void (*func)(int, int))
 {
     turt->onclick = func;
+}
+
+/**
+ * Add handler function to keyboard presses
+ * @param turt
+ * @param func the function to be called; takes 1 SDLKey
+ * and 1 SDLMod (for now), returns nothing
+ */
+void TT_OnKeyb(struct Turtle* turt, void (*func)(SDLKey, SDLMod))
+{
+    turt->onkeyb = func;
 }
 
 /*
