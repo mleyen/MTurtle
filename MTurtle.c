@@ -475,6 +475,13 @@ void TT_Circle(struct Turtle* turt, int radius)
 
     int x = turt->x + round(offset_x);
     int y = turt->y + round(offset_y);
+    printf("Circle center is x=%d y=%d\n", x, y);
+
+    if(x < 0 || y < 0 || x >= turt->surface->w || y >= turt->surface->h)
+    {
+        fprintf(stderr, "TT_Circle: circle center is off limits!\n");
+        return;
+    }
 
     Draw_Circle(turt->surface, x, y, radius, turt->color);
 }

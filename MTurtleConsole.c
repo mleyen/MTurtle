@@ -73,26 +73,18 @@ int main(int argc, char** argv)
 
     /* Init Terminal */
     term = SDL_CreateTerminal();
-    SDL_TerminalSetFont(term, TERMINAL_FONT_FILE, TERMINAL_FONT_SIZE);
+    if(SDL_TerminalSetFont(term, TERMINAL_FONT_FILE, TERMINAL_FONT_SIZE) == -1)
+    {
+        fprintf(stderr, "SDL_TerminalSetFont() failed: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
     SDL_TerminalSetSize(term, 80, 25);
     SDL_TerminalSetPosition(term, 10, 10);
     SDL_TerminalClear(term);
 
     SDL_TerminalPrint(term, "MTurtle Console\n\xA9 2015 Mathias Leyendecker\n>>> ");
 
-    /* Make Test Drawing */
-    TT_PenDown(turt);
-
-    float size = 1;
-
-    while(size <= 30)
-    {
-        TT_Forward(turt, size);
-        TT_Right(turt, 15);
-        size *= 1.02;
-    }
-
-    TT_MoveTo(turt, 0, 0);
+    char buf[1024];
 
     /* Main Loop */
     for(;;)
@@ -110,15 +102,12 @@ int main(int argc, char** argv)
         /* Process Terminal Events */
         if(ev.type == SDL_TERMINALEVENT)
         {
-            if(strcmp(ev.user.data2, "exit") == 0)
+            strncpy(buf, ev.user.data2, 1024);
+            if(!parseLine(buf))
             {
                 break;
             }
-            else
-            {
-                SDL_TerminalPrint(term, "%s\n>>> ", ev.user.data2);
-            }
-            /* TODO */
+            SDL_TerminalPrint(term, ">>> ");
         }
         /*else if(ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE)
         {
@@ -142,4 +131,191 @@ int main(int argc, char** argv)
     SDL_DestroyTerminal(term);
     TT_EndProgram();
     return EXIT_SUCCESS;
+}
+
+bool parseLine(char* str)
+{
+    char* token;
+    char* oldstr = str;
+    token = strtok(str, " \t");
+
+    /* Empty Command */
+    if(token == NULL)
+    {
+        /* Do Nothing */
+    }
+    /* Exit */
+    else if(strcmp(token, "exit") == 0 || strcmp(token, "quitte") == 0)
+    {
+        return false;
+    }
+    /* Help */
+    else if(strcmp(token, "help") == 0 || strcmp(token, "aide") == 0)
+    {
+        SDL_TerminalPrint(term, "Write me!\n");
+    }
+    /* Forward */
+    else if(strcmp(token, "forward") == 0 || strcmp(token, "fwd") == 0 || strcmp(token, "avance") == 0)
+    {
+        int distance = 0;
+        token = strtok(NULL, " \t");
+        if(token == NULL)
+        {
+            distance = 20;
+        }
+        else
+        {
+            distance = strtol(token, NULL, 0);
+            if(distance == 0)
+            {
+                distance = 20;
+            }
+        }
+
+        TT_Forward(turt, distance);
+    }
+    /* Backward */
+    else if(strcmp(token, "backward") == 0 || strcmp(token, "back") == 0 || strcmp(token, "recule") == 0)
+    {
+        int distance = 0;
+        token = strtok(NULL, " \t");
+        if(token == NULL)
+        {
+            distance = 20;
+        }
+        else
+        {
+            distance = strtol(token, NULL, 0);
+            if(distance == 0)
+            {
+                distance = 20;
+            }
+        }
+
+        TT_Backward(turt, distance);
+    }
+    /* Left */
+    else if(strcmp(token, "left") == 0 || strcmp(token, "gauche") == 0)
+    {
+        int angle = 0;
+        token = strtok(NULL, " \t");
+        if(token == NULL)
+        {
+            angle = 90;
+        }
+        else
+        {
+            angle = strtol(token, NULL, 0);
+            if(angle == 0)
+            {
+                angle = 20;
+            }
+        }
+
+        TT_Left(turt, angle);
+    }
+    /* Right */
+    else if(strcmp(token, "right") == 0 || strcmp(token, "droite") == 0)
+    {
+        int angle = 0;
+        token = strtok(NULL, " \t");
+        if(token == NULL)
+        {
+            angle = 90;
+        }
+        else
+        {
+            angle = strtol(token, NULL, 0);
+            if(angle == 0)
+            {
+                angle = 90;
+            }
+        }
+
+        TT_Right(turt, angle);
+    }
+    /* Pen Down */
+    else if(strcmp(token, "down") == 0 || strcmp(token, "pendown") == 0 || strcmp(token, "baissecrayon") == 0)
+    {
+        TT_PenDown(turt);
+    }
+    /* Pen Up */
+    else if(strcmp(token, "up") == 0 || strcmp(token, "penup") == 0 || strcmp(token, "levecrayon") == 0)
+    {
+        TT_PenUp(turt);
+    }
+    /* Show Turtle */
+    else if(strcmp(token, "showturtle") == 0 || strcmp(token, "montretortue") == 0)
+    {
+        TT_ShowTurtle(turt);
+    }
+    /* Hide Turtle */
+    else if(strcmp(token, "hideturtle") == 0 || strcmp(token, "cachetortue") == 0)
+    {
+        TT_HideTurtle(turt);
+    }
+    /* Circle */
+    /*
+     * FIXME will cause segfaults and display corruption on big values
+     * (e.g. circle of radius 237 from the origin)
+     */
+    else if(strcmp(token, "circle") == 0 || strcmp(token, "circ") == 0 || strcmp(token, "cercle") == 0)
+    {
+        int radius = 0;
+        token = strtok(NULL, " \t");
+        if(token == NULL)
+        {
+            radius = 20;
+        }
+        else
+        {
+            radius = strtol(token, NULL, 0);
+            if(radius == 0)
+            {
+                radius = 20;
+            }
+        }
+
+        TT_Circle(turt, radius);
+    }
+    /* Write Text */
+    else if(strcmp(token, "write") == 0 || strcmp(token, "ecrire") == 0 || strcmp(token, "ecrit") == 0)
+    {
+        token = strtok(NULL, "");
+        TT_WriteText(turt, token);
+    }
+    /* Home */
+    else if(strcmp(token, "home") == 0 || strcmp(token, "origine") == 0)
+    {
+        TT_Home(turt);
+    }
+    /* Clear */
+    else if(strcmp(token, "clear") == 0 || strcmp(token, "efface") == 0)
+    {
+        TT_Clear(turt);
+    }
+    /* Reset */
+    else if(strcmp(token, "reset") == 0)
+    {
+        TT_Reset(turt);
+    }
+    /* Echo */
+    else if(strcmp(token, "echo") == 0)
+    {
+        token = strtok(NULL, "");
+        SDL_TerminalPrint(term, "%s\n", token);
+    }
+    /* Xyzzy */
+    else if(strcmp(token, "xyzzy") == 0)
+    {
+        /* Do Nothing */
+    }
+    /* Unknown Command */
+    else
+    {
+        SDL_TerminalPrint(term, "%s: no such command.\n", token);
+    }
+
+    str = oldstr;
+    return true;
 }

@@ -28,7 +28,11 @@ int main(void)
 
     /* Configure Terminal */
     SDL_Terminal* term = SDL_CreateTerminal();
-    SDL_TerminalSetFont(term, "miscfixed.ttf", 12);
+    if(SDL_TerminalSetFont(term, "miscfixed.ttf", 12) == -1)
+    {
+        fprintf(stderr, "SDL_TerminalSetFont() failed: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
     SDL_TerminalSetSize(term, 80, 25);
     SDL_TerminalSetPosition(term, 0, 0);
 
