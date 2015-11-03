@@ -16,8 +16,8 @@
 
 /* TODO make these configurable at runtime? */
 #define TURTLE_SPRITE "triangle3.png"
-#define FONT_FILE "inconsolata-dz.ttf"
-#define FONT_SIZE 13 /* in pt */
+#define FONT_FILE "miscfixed.ttf"
+#define FONT_SIZE 12 /* in pt */
 
 SDL_Surface* tt_screen;
 SDL_Surface* tt_baseCursor;
@@ -89,6 +89,19 @@ void TT_Init(const char* title, int w, int h)
 }
 
 /**
+ * Only initializes library-specific values. For advanced
+ * users only; make sure you have initialized everything else
+ * before using this.
+ * @param screen
+ */
+void TT_InitMinimal(SDL_Surface* screen)
+{
+    tt_screen = screen;
+    tt_baseCursor = IMG_Load(TURTLE_SPRITE);
+    tt_font = TTF_OpenFont(FONT_FILE, FONT_SIZE);
+}
+
+/**
  * Creates a new turtle.
  * @param w surface width
  * @param h surface height
@@ -107,10 +120,13 @@ struct Turtle* TT_Create(int w, int h, int r, int g, int b)
     turt->angle = 0;
     turt->isDrawing = false;
     turt->isVisible = true;
+    turt->isFilling = false;
     turt->onclick = NULL; /* sorry for the null pointer */
     turt->onkeyb = NULL;
 
     turt->surface = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, BITS_PER_PIXEL, 0, 0, 0, 0);
+    turt->surfacePos.x = 0;
+    turt->surfacePos.y = 0;
 
     /* TODO find better sprite for cursor? */
 
@@ -174,29 +190,37 @@ bool TT_MainLoop(struct Turtle* turt)
     /* Clear Screen */
     SDL_FillRect(tt_screen, NULL, turt->bgColor);
 
+    /* Paint Turtle */
+    TT_Blit(turt);
+
+    /* Refresh Window */
+    SDL_Flip(tt_screen);
+
+    return true;
+}
+
+/**
+ * Blits the turtle once. Use this only if you are managing
+ * the main loop yourself.
+ * @param turt
+ */
+void TT_Blit(struct Turtle* turt)
+{
     /* Paint Turtle Surface (aka current trails) */
-    SDL_Rect surfacePos;
-    surfacePos.x = 0;
-    surfacePos.y = 0;
-    SDL_BlitSurface(turt->surface, NULL, tt_screen, &surfacePos);
+    SDL_BlitSurface(turt->surface, NULL, tt_screen, &(turt->surfacePos));
 
     /* Paint Cursor as Necessary */
     if(turt->isVisible)
     {
         SDL_Surface* cursor = rotozoomSurface(tt_baseCursor, -abs(turt->angle), 1.0, 1);
         SDL_Rect cursorPos;
-        cursorPos.x = turt->x - cursor->w / 2;
-        cursorPos.y = turt->y - cursor->h / 2;
+        cursorPos.x = (turt->x - cursor->w / 2) + turt->surfacePos.x;
+        cursorPos.y = (turt->y - cursor->h / 2) + turt->surfacePos.y;
 
         SDL_BlitSurface(cursor, NULL, tt_screen, &cursorPos);
 
         SDL_FreeSurface(cursor);
     }
-
-    /* Refresh Window */
-    SDL_Flip(tt_screen);
-
-    return true;
 }
 
 /**
@@ -230,6 +254,12 @@ void TT_EndProgram()
 void TT_SetColor(struct Turtle* turt, Uint32 r, Uint32 g, Uint32 b)
 {
     turt->color = SDL_MapRGB(turt->surface->format, r, g, b);
+}
+
+void TT_SetSurfacePos(struct Turtle* turt, int x, int y)
+{
+    turt->surfacePos.x = x;
+    turt->surfacePos.y = y;
 }
 
 /**

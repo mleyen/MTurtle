@@ -32,6 +32,7 @@ struct Turtle
     int fillIndex;                  /* shape fill current vertex */
     bool isFilling;                 /* are we currently filling a polygon? */
     SDL_Surface* surface;           /* SDL surface for the turtle screen */
+    SDL_Rect surfacePos;            /* surface coordinates on the screen */
     void (*onclick)(int, int);      /* click event handler func */
     void (*onkeyb)(SDLKey, SDLMod); /* keyboard event handler func -- TODO avoid exposing SDL */
 };
@@ -44,6 +45,14 @@ struct Turtle
  * @param h window height
  */
 void TT_Init(const char* title, int w, int h);
+
+/**
+ * Only initializes library-specific values. For advanced
+ * users only; make sure you have initialized everything else
+ * before using this.
+ * @param screen
+ */
+void TT_InitMinimal(SDL_Surface* screen);
 
 /**
  * Creates a new turtle.
@@ -65,6 +74,13 @@ struct Turtle* TT_Create(int w, int h, int r, int g, int b);
 bool TT_MainLoop(struct Turtle* turt);
 
 /**
+ * Blits the turtle once. Use this only if you are managing
+ * the main loop yourself.
+ * @param turt
+ */
+void TT_Blit(struct Turtle* turt);
+
+/**
  * Destroys a Turtle struct.
  * @param turt the victim
  */
@@ -84,6 +100,8 @@ void TT_EndProgram();
  * @param b
  */
 void TT_SetColor(struct Turtle* turt, Uint32 r, Uint32 g, Uint32 b);
+
+void TT_SetSurfacePos(struct Turtle* turt, int x, int y);
 
 /**
  * Moves the cursor to the specified location

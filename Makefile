@@ -1,8 +1,8 @@
 CPP=gcc
-CFLAGS=-O3 -I /usr/local/include -I /usr/include -I /usr/include/SDL -I /usr/local/include/SDL
+CFLAGS=-O3 -I /usr/local/include -I /usr/include -I /usr/include/SDL -I /usr/local/include/SDL -g
 LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lSDL_terminal -lm
 
-all: hello spirale draw lantern olympics terminal_test
+all: hello spirale draw lantern olympics terminal_test MTurtleConsole
 
 MTurt.o: MTurt.c
 	${CPP} $(CFLAGS) -o MTurt.o -c MTurt.c
@@ -46,9 +46,15 @@ terminal_test: terminal_test.o MTurtle.o
 terminal_test.o: terminal_test.c
 	${CPP} $(CFLAGS) -o terminal_test.o -c terminal_test.c
 
+MTurtleConsole: MTurtleConsole.o MTurtle.o
+	${CPP} $(CFLAGS) -o console MTurtleConsole.o MTurtle.o ${LDFLAGS}
+
+MTurtleConsole.o: MTurtleConsole.c
+	${CPP} $(CFLAGS) -o MTurtleConsole.o -c MTurtleConsole.c
+
 clean:	
 	rm -rf *.o
 
 mrproper: clean
-	rm hello spirale draw lantern olympics terminal_test
+	rm hello spirale draw lantern olympics terminal_test console
 
