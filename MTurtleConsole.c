@@ -39,6 +39,9 @@ SDL_Surface* screen;
 struct Turtle* turt;
 SDL_Terminal* term;
 
+#define MAX_VARS 256
+static struct var_item* vars[MAX_VARS];
+
 int main(int argc, char** argv)
 {
     /* Init SDL */
@@ -138,6 +141,10 @@ bool parseLine(char* str)
     char* token;
     char* oldstr = str;
     token = strtok(str, " \t");
+
+    /*
+     * BASIC COMMANDS
+     */
 
     /* Empty Command */
     if(token == NULL)
@@ -278,6 +285,26 @@ bool parseLine(char* str)
 
         TT_Circle(turt, radius);
     }
+    /* Centered Circle */
+    else if(strcmp(token, "centeredcircle") == 0 || strcmp(token, "centcirc") == 0 || strcmp(token, "cerclecentre") == 0)
+    {
+        int radius = 0;
+        token = strtok(NULL, " \t");
+        if(token == NULL)
+        {
+            radius = 20;
+        }
+        else
+        {
+            radius = strtol(token, NULL, 0);
+            if(radius == 0)
+            {
+                radius = 20;
+            }
+        }
+
+        TT_CenteredCircle(turt, radius);
+    }
     /* Write Text */
     else if(strcmp(token, "write") == 0 || strcmp(token, "ecrire") == 0 || strcmp(token, "ecrit") == 0)
     {
@@ -310,7 +337,18 @@ bool parseLine(char* str)
     {
         /* Do Nothing */
     }
-    /* Unknown Command */
+
+    /*
+     * ADVANCED SYNTAX
+     */
+
+    /* Set Variable */
+    /*else if(strcmp(token, "set") == 0)
+    {
+
+    }*/
+
+    /* Unknown Command Or Operator */
     else
     {
         SDL_TerminalPrint(term, "%s: no such command.\n", token);
@@ -319,3 +357,42 @@ bool parseLine(char* str)
     str = oldstr;
     return true;
 }
+
+unsigned int strhash(char* str)
+{
+    unsigned int hashval;
+    for(hasval = 0; *str != '\0'; str++)
+    {
+        hashval = *str + 31 * hashval;
+    }
+    return hashval % HASHSIZE;
+}
+
+/*char* strdup(char* str)
+{
+    char* str2 = malloc((strlen(str) + 1) * sizeof(char));
+
+    strcpy(str2, str);
+    return str2;
+}*/
+
+struct var_list* var_get(char* name)
+{
+    struct var_list* cursor = vars[strhash(name)];
+    while(cursor != NULL)
+    {
+        if(strcmp(str, cursor->name) == 0)
+        {
+            return cursor;
+        }
+
+        cursor = cursor->next;
+    }
+
+    return NULL;
+}
+
+/*struct var_list* var_set(char* name, double var)
+{
+
+}*/
