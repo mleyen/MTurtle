@@ -1,6 +1,13 @@
 %{
 	#define YYDEBUG 1
 	#include "consolev2.tab.h"
+	#include "consolev2_common.h"
+    
+    #define YY_INPUT(buf, result, max_size) result = readLine(yyin, buf, max_size, yyextra)
+    
+    YY_BUFFER_STATE parsebuf;
+    
+    static void comment(void);
 %}
 
 identifier  [a-zA-Z_][a-zA-Z0-9_]*
@@ -8,17 +15,15 @@ integer     [0-9]+
 float       ([0-9]*\.[0-9]+|[0-9]+\.)
 string      \"(\\.|[^"])*\"
 
+%option extra-type="struct exec_env*"
+%x COMMENT
+
 %%
 
 <INITIAL>{
 
-"/*"    { comment(); }
+"/*"    { /*comment();*/ BEGIN(COMMENT); }
 "//".*  { /* ignore line comment */ }
-
-{identifier} {
-    yylval.name = strdup(yytext);
-    return TK_IDENTIFIER;
-}
 
 {integer} {
     yylval.intval = strtol(yytext, NULL, 10);
@@ -85,25 +90,26 @@ string      \"(\\.|[^"])*\"
 
 "echo"              { return TK_ECHO; }
 
-"load"              { return TK_LOAD; }
-"charge"            { return TK_LOAD; }
+(load|charge) {
+    return TK_LOAD;
+}
 
-"(endif|finsi|fsi)"                 { return TK_ENDIF; }
-"(endfor|finpour|fpour)"            { return TK_ENDFOR; }
-"(endwhile|fintantque|ftantque)"    { return TK_ENDWHILE; }
+(endif|finsi|fsi)                 { return TK_ENDIF; }
+(endfor|finpour|fpour)            { return TK_ENDFOR; }
+(endwhile|fintantque|ftantque)    { return TK_ENDWHILE; }
  
-"(if|si)"           { return TK_IF; }
-"(then|alors)"      { return TK_THEN; }
-"(else|sinon)"      { return TK_ELSE; }
-"(while|tantque)"   { return TK_WHILE; }
-"(for|pour)"        { return TK_FOR; }
-"(from|de)"         { return TK_FROM; }
-"(to|jusqua)"       { return TK_TO; }
-"(do|faire)"        { return TK_DO; }
+(if|si)           { return TK_IF; }
+(then|alors)      { return TK_THEN; }
+(else|sinon)      { return TK_ELSE; }
+(while|tantque)   { return TK_WHILE; }
+(for|pour)        { return TK_FOR; }
+(from|de)         { return TK_FROM; }
+(to|jusqua)       { return TK_TO; }
+(do|faire)        { return TK_DO; }
 
-"(&&|and|et)"   { return TK_AND; }
-"(\|\||or|ou)"  { return TK_OR; }
-"(not|pas)"     { return TK_NOT; }
+(&&|and|et)   { return TK_AND; }
+(\|\||or|ou)  { return TK_OR; }
+(not|pas)     { return TK_NOT; }
 
 "cos"   { return TK_COS; }
 "sin"   { return TK_SIN; }
@@ -113,6 +119,16 @@ string      \"(\\.|[^"])*\"
 "log"   { return TK_LOG; }
 "log10" { return TK_LOG10; }
 "exp"   { return TK_EXP; }
+"rmdr"  { return TK_RMDR; }
+"max"   { return TK_MAX; }
+"min"   { return TK_MIN; }
+"ceil"  { return TK_CEIL; }
+"floor" { return TK_FLOOR; }
+
+{identifier} {
+    yylval.name = strdup(yytext);
+    return TK_IDENTIFIER;
+}
 
 "=="    { return TK_EQ; }
 "!="    { return TK_NEQ; }
@@ -135,15 +151,33 @@ string      \"(\\.|[^"])*\"
 "%" { return '%'; }
 "(" { return '('; }
 ")" { return ')'; }
+";" { return TK_NEWLINE; /* for debug */ }
 
-.   { /* ignore junk characters */ }
+<<EOF>> {
+    yyterminate();
+    /*return TK_EOF;*/
+}
+
+"\0" {
+    yyterminate();
+}
+
+.   { /* ignore junk characters */ yyerror(NULL, "invalid character"); yyterminate(); }
+}
+
+<COMMENT>{
+
+"*/"    { BEGIN(INITIAL); }
+<<EOF>> { yyerror(NULL, "malformed comment"); yyterminate(); }
+.       { }
+
 }
 
 %%
 
 static void comment(void)
 {
-    int c;
+    /*int c;
 
     while ((c = input()) != 0)
         if (c == '*')
@@ -155,7 +189,20 @@ static void comment(void)
                 return;
 
             if (c == 0)
-                break;
+                return;
         }
-    yyerror("unterminated comment");
+    yyerror(NULL, "unterminated comment");*/
+    /*fprintf(stderr, "unterminated comment\n");*/
 }
+
+void scan_string(char* s)
+{
+    parsebuf = yy_scan_string(s);
+    yy_switch_to_buffer(parsebuf);
+}
+
+void clean_buffer()
+{
+    yy_delete_buffer(parsebuf);
+}
+

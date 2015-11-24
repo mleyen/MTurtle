@@ -1,6 +1,6 @@
 CPP=gcc
 CFLAGS=-O3 -I /usr/local/include -I /usr/include -I /usr/include/SDL -I /usr/local/include/SDL -g
-LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lSDL_terminal -lm
+LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lSDL_terminal -lm -lfl -ly
 
 all: hello spirale draw lantern olympics console
 
@@ -46,9 +46,27 @@ console: MTurtleConsole.o MTurtle.o
 MTurtleConsole.o: MTurtleConsole.c
 	${CPP} $(CFLAGS) -o MTurtleConsole.o -c MTurtleConsole.c
 
+consolev2: consolev2_common.o MTurtle.o consolev2.tab.o consolev2.yy.o
+	${CPP} $(CFLAGS) -o consolev2 consolev2_common.o MTurtle.o consolev2.tab.o consolev2.yy.o ${LDFLAGS}
+
+consolev2.tab.o: consolev2.tab.c consolev2.y
+	${CPP} $(CFLAGS) -o consolev2.tab.o -c consolev2.tab.c
+
+consolev2.tab.c: consolev2.y
+	bison -dv consolev2.y
+
+consolev2.yy.o: consolev2.yy.c
+	${CPP} $(CFLAGS) -o consolev2.yy.o -c consolev2.yy.c
+
+consolev2.yy.c: consolev2.l
+	flex -o consolev2.yy.c consolev2.l
+
+consolev2_common.o: consolev2_common.c
+	${CPP} $(CFLAGS) -o consolev2_common.o -c consolev2_common.c
+
 clean:	
-	rm -rf *.o
+	rm -rf *.o *.tab.c *.yy.c *.tab.h *.output
 
 mrproper: clean
-	rm hello spirale draw lantern olympics console
+	rm -f hello spirale draw lantern olympics console consolev2
 
