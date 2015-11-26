@@ -126,7 +126,6 @@ struct ast_node {
             struct ast_node* param;
         } turtleexpr;
     } data;
-    bool isValid;
 };
 
 struct var_list {
@@ -145,7 +144,6 @@ struct exec_env {
     struct Turtle* turt;
     struct var_list** vars;
     int max_vars;
-    char* command; /* entered command string to be read by lex (NOW UNUSED) */
     bool shouldExit;
 };
 
@@ -203,8 +201,14 @@ bool ast_eval_boolexpr(struct exec_env* env, struct ast_node* ast);
 
 int ast_eval_as_int(struct exec_env* env, struct ast_node* ast);
 
-int ast_eval_as_float(struct exec_env* env, struct ast_node* ast);
+float ast_eval_as_float(struct exec_env* env, struct ast_node* ast);
 
 char* ast_eval_as_string(struct exec_env* env, struct ast_node* ast);
+
+/*
+ * AST CLEANUP API
+ */
+
+void ast_destroy(struct ast_node* ast);
 
 #endif /* __CONSOLEV2_COMMON_H_ */

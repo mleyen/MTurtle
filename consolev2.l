@@ -3,11 +3,10 @@
 	#include "consolev2.tab.h"
 	#include "consolev2_common.h"
     
-    #define YY_INPUT(buf, result, max_size) result = readLine(yyin, buf, max_size, yyextra)
-    
     YY_BUFFER_STATE parsebuf;
     
-    static void comment(void);
+    YY_BUFFER_STATE filebuf[10];
+    int filebufindex = 0;
 %}
 
 identifier  [a-zA-Z_][a-zA-Z0-9_]*
@@ -22,7 +21,7 @@ string      \"(\\.|[^"])*\"
 
 <INITIAL>{
 
-"/*"    { /*comment();*/ BEGIN(COMMENT); }
+"/*"    { BEGIN(COMMENT); }
 "//".*  { /* ignore line comment */ }
 
 {integer} {
@@ -36,7 +35,11 @@ string      \"(\\.|[^"])*\"
 }
 
 {string} {
-    yylval.strval = strdup(yytext);
+    int lg = strlen(yytext);
+    yylval.strval = malloc(lg);
+    strncpy(yylval.strval, yytext + 1, lg - 2);
+    yylval.strval[lg - 2] = '\0';
+    
     return TK_STRING;
 }
 
@@ -79,6 +82,12 @@ string      \"(\\.|[^"])*\"
 "write"             { return TK_WRITE; }
 "ecrire"            { return TK_WRITE; }
 "ecrit"             { return TK_WRITE; }
+
+"hideturtle"        { return TK_HIDETURTLE; }
+"cachetortue"       { return TK_HIDETURTLE; }
+
+"showturtle"        { return TK_SHOWTURTLE; }
+"montretortue"      { return TK_SHOWTURTLE; }
 
 "home"              { return TK_HOME; }
 "origine"           { return TK_HOME; }
@@ -162,7 +171,11 @@ string      \"(\\.|[^"])*\"
     yyterminate();
 }
 
-.   { /* ignore junk characters */ yyerror(NULL, "invalid character"); yyterminate(); }
+.   { /* ignore junk characters */
+    yyerror(NULL, "invalid character");
+    fprintf(stderr, "Invalid character found: %s\n", yytext);
+    yyterminate();
+}
 }
 
 <COMMENT>{
@@ -175,26 +188,6 @@ string      \"(\\.|[^"])*\"
 
 %%
 
-static void comment(void)
-{
-    /*int c;
-
-    while ((c = input()) != 0)
-        if (c == '*')
-        {
-            while ((c = input()) == '*')
-                ;
-
-            if (c == '/')
-                return;
-
-            if (c == 0)
-                return;
-        }
-    yyerror(NULL, "unterminated comment");*/
-    /*fprintf(stderr, "unterminated comment\n");*/
-}
-
 void scan_string(char* s)
 {
     parsebuf = yy_scan_string(s);
@@ -206,3 +199,53 @@ void clean_buffer()
     yy_delete_buffer(parsebuf);
 }
 
+struct ast_node* scan_file(char* name)
+{
+    if(filebufindex >= 10)
+    {
+        fprintf(stderr, "*** FATAL: max include depth reached\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    FILE* file = fopen(name, "r");
+    if(file == NULL)
+    {
+        /*fprintf(stderr, "-!- Unable to open %s: %s\n", name, strerror(errno));
+        return NULL;*/
+        
+        char* str = malloc(1024);
+        snprintf(str, 1024, "-!- Unable to open %s: %s", name, strerror(errno));
+        struct ast_node* ast = ast_make(AST_ECHO, ast_make_string(str), NULL);
+        return ast;
+    }
+    
+    fseek(file, 0, SEEK_END);
+    long lg = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    
+    char* buf = malloc(sizeof(char) * lg);
+    if(buf == NULL)
+    {
+        fprintf(stderr, "*** FATAL: Unable to create buffer of %ld bytes: %s\n", lg, strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    
+    fread(buf, 1, lg, file);
+    fclose(file);
+    buf[lg] = '\0';
+    /*printf("buf[lg - 1] = %c\n", buf[lg - 1]);
+    printf("buf[lg] = %c\n", buf[lg]);
+    printf("buf[lg + 1] = %c\n", buf[lg + 1]);*/
+    
+    filebuf[filebufindex] = yy_scan_string(buf);
+    free(buf);
+    filebufindex++;
+    
+    struct ast_node* ast;
+    yyparse(&ast); /* will this work? */
+    
+    yy_delete_buffer(filebuf[filebufindex - 1]);
+    filebufindex--;
+    
+    return ast;
+}

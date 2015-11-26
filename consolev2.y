@@ -5,6 +5,7 @@
     #include <stdlib.h>
     #include <stdbool.h>
     #include <string.h>
+    #include <errno.h>
     #include <SDL/SDL.h>
     #include <SDL/SDL_image.h>
     #include <SDL/SDL_ttf.h>
@@ -41,7 +42,7 @@
 %token TK_CIRCLE TK_CENTEREDCIRCLE TK_WRITE TK_HOME TK_CLEAR TK_RESET TK_ECHO
 %token TK_LOAD TK_IF TK_THEN TK_ELSE TK_WHILE TK_FOR TK_FROM TK_TO TK_DO
 %token TK_AND TK_OR TK_NOT TK_ENDIF TK_ENDFOR TK_ENDWHILE TK_EQ TK_NEQ TK_GEQ TK_LEQ
-%token TK_ASSIGN TK_NEWLINE TK_NOELSE TK_EOF
+%token TK_ASSIGN TK_NEWLINE TK_NOELSE TK_EOF TK_HIDETURTLE TK_SHOWTURTLE
 %token TK_COS TK_SIN TK_TAN TK_ABS TK_SQRT TK_LOG TK_LOG10 TK_EXP TK_RMDR
 %token TK_MAX TK_MIN TK_CEIL TK_FLOOR
 %token <name> TK_IDENTIFIER
@@ -68,8 +69,8 @@
 %%
 
 top_level
-    : statements { $1->isValid = true; *ast_result = $1; }
-    | statement { $1->isValid = true; *ast_result = $1; }
+    : statements { *ast_result = $1; }
+    | statement { *ast_result = $1; }
     | newlines { *ast_result = NULL; }
     | %empty { *ast_result = NULL; }
 ;
@@ -88,6 +89,8 @@ statement
     | turt_right { $$ = $1; }
     | TK_PENDOWN { $$ = ast_make_turtle(TURT_PENDOWN, NULL); }
     | TK_PENUP { $$ = ast_make_turtle(TURT_PENUP, NULL); }
+    | TK_HIDETURTLE { $$ = ast_make_turtle(TURT_HIDE, NULL); }
+    | TK_SHOWTURTLE { $$ = ast_make_turtle(TURT_SHOW, NULL); }
     | turt_circle { $$ = $1; }
     | turt_centered_circle { $$ = $1; }
     | turt_write { $$ = $1; }
@@ -100,7 +103,11 @@ statement
     | blc_while { $$ = $1; }
     | blc_for { $$ = $1; }
     | assignment { $$ = $1; }
-    | expression { $$ = ast_make(AST_ECHO, $1, NULL); }
+    | TK_IDENTIFIER {
+        char* str = malloc(1024);
+        snprintf(str, 1024, "-!- Unknown command: %s", $1);
+        $$ = ast_make(AST_ECHO, ast_make_string(str), NULL);
+    }
 ;
 
 assignment
@@ -285,6 +292,7 @@ int main(int argc, char** argv)
     TT_InitMinimal(screen);
     turt = TT_Create(640, 480, 0, 0, 0);
     TT_SetSurfacePos(turt, 320, 0);
+    TT_PenDown(turt);
 
     /* Init Terminal */
     term = SDL_CreateTerminal();
@@ -322,43 +330,35 @@ int main(int argc, char** argv)
         /* User Exit */
         if(ev.type == SDL_QUIT)
         {
-            /*fprintf(stderr, "Regular exit.\n");*/
             break;
         }
 
         /* Process Terminal Events */
         if(ev.type == SDL_TERMINALEVENT)
         {
-            /*fprintf(stderr, "New terminal event: %s\n", ev.user.data2);*/
-            
-            /* Put Command to Environment */
-            env.command = strdup(ev.user.data2);
-            
-            /* Invalide last AST to prevent double execution */
-            if(ast != NULL)
-            {
-                ast->isValid = false;
-            }
-            
             /* Send Command to Lexer */
-            yyin = NULL;
-            
             scan_string(ev.user.data2);
             
             yyparse(&ast);
             clean_buffer();
             
             /* Run Generated AST */
-            if(ast != NULL && ast->isValid)
+            if(ast != NULL)
             {
                 ast_run(&env, ast);
             }
             
+            /* Exit as Necessary */
             if(env.shouldExit)
             {
                 break;
             }
             
+            /* Cleanup AST */
+            ast_destroy(ast);
+            ast = NULL;
+            
+            /* Print Prompt */
             SDL_TerminalPrint(term, ">>> ");
         }
         /*else if(ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE)
@@ -378,8 +378,6 @@ int main(int argc, char** argv)
         /* Refresh Screen */
         SDL_Flip(screen);
     }
-    
-    /*fprintf(stderr, "Exiting main loop\n");*/
     
     TT_Destroy(turt);
     SDL_DestroyTerminal(term);

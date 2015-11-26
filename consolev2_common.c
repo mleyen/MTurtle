@@ -6,6 +6,8 @@
 #include "MTurtle.h"
 #include "consolev2_common.h"
 
+extern struct ast_node* scan_file(char*);
+
 /*
  * UTILITY API
  */
@@ -43,6 +45,7 @@ struct var_list* var_get(struct exec_env* env, char* name)
     {
         if(strcmp(name, cursor->name) == 0)
         {
+            /*printf("Retrieving value for %s: %f\n", cursor->name, cursor->val);*/
             return cursor;
         }
 
@@ -75,6 +78,7 @@ struct var_list* var_set(struct exec_env* env, char* name, float val)
     }
 
     cursor->val = val;
+    /*printf("%s is set to %f\n", cursor->name, cursor->val);*/
     return cursor;
 }
 
@@ -84,7 +88,6 @@ struct var_list* var_set(struct exec_env* env, char* name, float val)
 
 struct ast_node* ast_make(ast_type type, struct ast_node* left, struct ast_node* right)
 {
-    //printf("ast_make() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = type;
@@ -97,7 +100,6 @@ struct ast_node* ast_make(ast_type type, struct ast_node* left, struct ast_node*
 
 struct ast_node* ast_make_boolexpr(boolop_type op, struct ast_node* left, struct ast_node* right)
 {
-    //printf("ast_make_boolexpr() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = AST_BOOLEXPR;
@@ -110,7 +112,6 @@ struct ast_node* ast_make_boolexpr(boolop_type op, struct ast_node* left, struct
 
 struct ast_node* ast_make_if(struct ast_node* condition, struct ast_node* ifactions, struct ast_node* elseactions)
 {
-    //printf("ast_make_if() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = AST_IF;
@@ -123,7 +124,6 @@ struct ast_node* ast_make_if(struct ast_node* condition, struct ast_node* ifacti
 
 struct ast_node* ast_make_while(struct ast_node* condition, struct ast_node* loopactions)
 {
-    //printf("ast_make_while() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = AST_WHILE;
@@ -135,7 +135,6 @@ struct ast_node* ast_make_while(struct ast_node* condition, struct ast_node* loo
 
 struct ast_node* ast_make_for(char* cursorname, struct ast_node* begin, struct ast_node* end, struct ast_node* loopactions)
 {
-    //printf("ast_make_for() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = AST_FOR;
@@ -149,7 +148,6 @@ struct ast_node* ast_make_for(char* cursorname, struct ast_node* begin, struct a
 
 struct ast_node* ast_make_symref(char* name)
 {
-    //printf("ast_make_symref() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = AST_SYMREF;
@@ -160,7 +158,6 @@ struct ast_node* ast_make_symref(char* name)
 
 struct ast_node* ast_make_assign(char* name, struct ast_node* val)
 {
-    //printf("ast_make_assign() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
 
     ast->type = AST_ASSIGN;
@@ -172,7 +169,6 @@ struct ast_node* ast_make_assign(char* name, struct ast_node* val)
 
 struct ast_node* ast_make_spfunc(spfunc_type type, struct ast_node* left, struct ast_node* right)
 {
-    //printf("ast_make_spfunc() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = AST_SPFUNC;
@@ -185,7 +181,6 @@ struct ast_node* ast_make_spfunc(spfunc_type type, struct ast_node* left, struct
 
 struct ast_node* ast_make_turtle(turt_action_type type, struct ast_node* param)
 {
-    //printf("ast_make_turtle() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = AST_TURTLE;
@@ -197,7 +192,6 @@ struct ast_node* ast_make_turtle(turt_action_type type, struct ast_node* param)
 
 struct ast_node* ast_make_integer(int intval)
 {
-    //printf("ast_make_integer() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = AST_INTEGER;
@@ -208,7 +202,6 @@ struct ast_node* ast_make_integer(int intval)
 
 struct ast_node* ast_make_float(float fltval)
 {
-    //printf("ast_make_float() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = AST_FLOAT;
@@ -219,7 +212,6 @@ struct ast_node* ast_make_float(float fltval)
 
 struct ast_node* ast_make_string(char* strval)
 {
-    //printf("ast_make_string() is called\n");
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
     
     ast->type = AST_STRING;
@@ -402,7 +394,9 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
     }
     else if(ast->type == AST_LOADFILE)
     {
-        SDL_TerminalPrint(env->term, "Not yet implemented...\n");
+        struct ast_node* ast2 = scan_file(ast_eval_as_string(env, ast->data.expr.left));
+
+        ast_run(env, ast2);
     }
     else
     {
@@ -491,7 +485,7 @@ int ast_eval_as_int(struct exec_env* env, struct ast_node* ast)
     }
 }
 
-int ast_eval_as_float(struct exec_env* env, struct ast_node* ast)
+float ast_eval_as_float(struct exec_env* env, struct ast_node* ast)
 {
     if(ast == NULL)
     {
@@ -670,37 +664,74 @@ char* ast_eval_as_string(struct exec_env* env, struct ast_node* ast)
 }
 
 /*
- * PARSER API
+ * AST CLEANUP API
  */
 
-int readLine(FILE* file, char* buf, size_t max_size, struct exec_env* env)
+void ast_destroy(struct ast_node* ast)
 {
-    if(file == NULL /*|| file == stdin*/) /* main interpreter loop (i.e. not in loaded file) */
+    if(ast == NULL)
     {
-        printf("yyin is null\n");
-        /*fprintf(stderr, "We should not be there right now!\n");
-        exit(0);*/
-        /* Buffer is Set to Typed Command (from SDL terminal event) */
-        size_t len = strlen(env->command);
-        memcpy(buf, env->command, len + 1);
-
-        fprintf(stderr, "buf=%s env->command=%s len=%d\n", buf, env->command, len);
-
-        return len;
+        return;
     }
 
-    else /* non interactive mode */
+    switch(ast->type)
     {
-        printf("yyin is not null\n");
-        if(file == stdin)
-        {
-            printf("Reading from stdin\n");
-        }
-
-        /* Read File -> Fill Buffer */
-        size_t len = fread(buf, 1, max_size, file);
-        printf("Read %d chars\n", len);
-
-        return len;
+    case AST_PLUS:
+    case AST_MINUS:
+    case AST_TIMES:
+    case AST_DIV:
+    case AST_MOD:
+    case AST_UNARY_MINUS:
+    case AST_AND:
+    case AST_OR:
+    case AST_NOT:
+    case AST_EXIT:
+    case AST_SHOWHELP:
+    case AST_ECHO:
+    case AST_LOADFILE:
+    case AST_STATEMENTS:
+        ast_destroy(ast->data.expr.left);
+        ast_destroy(ast->data.expr.right);
+        break;
+    case AST_BOOLEXPR:
+        ast_destroy(ast->data.boolexpr.left);
+        ast_destroy(ast->data.boolexpr.right);
+        break;
+    case AST_STRING:
+        free(ast->data.strval);
+        break;
+    case AST_IF:
+        ast_destroy(ast->data.ifexpr.condition);
+        ast_destroy(ast->data.ifexpr.ifactions);
+        ast_destroy(ast->data.ifexpr.elseactions);
+        break;
+    case AST_WHILE:
+        ast_destroy(ast->data.whileexpr.condition);
+        ast_destroy(ast->data.whileexpr.loopactions);
+        break;
+    case AST_FOR:
+        ast_destroy(ast->data.forexpr.begin);
+        ast_destroy(ast->data.forexpr.end);
+        ast_destroy(ast->data.forexpr.loopactions);
+        free(ast->data.forexpr.cursorname);
+        break;
+    case AST_SYMREF:
+        free(ast->data.symrefexpr.name);
+        break;
+    case AST_ASSIGN:
+        ast_destroy(ast->data.assignexpr.val);
+        free(ast->data.assignexpr.name);
+        break;
+    case AST_SPFUNC:
+        ast_destroy(ast->data.spfuncexpr.left);
+        ast_destroy(ast->data.spfuncexpr.right);
+        break;
+    case AST_TURTLE:
+        ast_destroy(ast->data.turtleexpr.param);
+        break;
+    default:
+        break;
     }
+
+    free(ast);
 }
