@@ -1,3 +1,27 @@
+/*
+ * Copyright 2015 Mathias Leyendecker / University of Strasbourg
+ *
+ * This file is part of MTurtle.
+ * MTurtle is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * MTurtle is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MTurtle.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * ====================================================================
+ *
+ * MTurt
+ * Simpler version of the library, doesn't require a struct Turtle
+ * pointer in the code, only allows one turtle per program.
+ */
+
 #ifndef __MTURT_H_
 #define __MTURT_H_
 

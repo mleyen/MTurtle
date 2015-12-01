@@ -1,4 +1,27 @@
-/*%error-verbose*/
+/*
+ * Copyright 2015 Mathias Leyendecker / University of Strasbourg
+ *
+ * This file is part of MTurtle.
+ * MTurtle is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * MTurtle is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MTurtle.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * ====================================================================
+ *
+ * MTurtle Console
+ * Command line interpreter for Turtle graphics
+ */
+ 
+ /*%error-verbose*/
 %define parse.error verbose
 %code requires {
     #include <stdio.h>
@@ -126,6 +149,7 @@ expression
     | expression '%' expression { $$ = ast_make(AST_MOD, $1, $3); }
     /*| '-' expression %prec '-' { $$ = ast_make(AST_UNARY_MINUS, $2, NULL); }*/
     | '(' basic_func ')' { $$ = $2; }
+    /*| basic_func { $$ = $1; }*/
     | expression TK_RMDR expression { $$ = ast_make_spfunc(SPFUNC_RMDR, $1, $3); }
 ;
 
@@ -138,8 +162,10 @@ boolexpr
     : expression boolop expression { $$ = ast_make_boolexpr($2, $1, $3); }
     | '(' boolexpr ')' { $$ = $2; }
     | bool_not boolexpr { $$ = ast_make(AST_NOT, $2, NULL); }
-    | '(' boolexpr TK_AND boolexpr ')'  { $$ = ast_make(AST_AND, $2, $2); }
+    | '(' boolexpr TK_AND boolexpr ')'  { $$ = ast_make(AST_AND, $2, $4); }
     | '(' boolexpr TK_OR boolexpr ')'  { $$ = ast_make(AST_OR, $2, $4); }
+    /*| boolexpr TK_AND boolexpr  { $$ = ast_make(AST_AND, $1, $3); }
+    | boolexpr TK_OR boolexpr  { $$ = ast_make(AST_OR, $1, $3); }*/
 ;
 
 boolop
@@ -204,12 +230,16 @@ load_file
 ;
 
 blc_if
-    : TK_IF boolexpr TK_THEN statements TK_ENDIF %prec TK_NOELSE { $$ = ast_make_if($2, $4, NULL); }
-    | TK_IF boolexpr TK_THEN statements TK_ELSE statements TK_ENDIF { $$ = ast_make_if($2, $4, $6); }
+    : TK_IF boolexpr TK_THEN optional_newlines statements TK_ENDIF %prec TK_NOELSE {
+        $$ = ast_make_if($2, $5, NULL);
+    }
+    | TK_IF boolexpr TK_THEN optional_newlines statements TK_ELSE optional_newlines statements TK_ENDIF {
+        $$ = ast_make_if($2, $5, $8);
+    }
 ;
 
 blc_while
-    : TK_WHILE boolexpr TK_DO statements TK_ENDWHILE { $$ = ast_make_while($2, $4); }
+    : TK_WHILE boolexpr TK_DO optional_newlines statements TK_ENDWHILE { $$ = ast_make_while($2, $5); }
 ;
 
 loop_value
@@ -218,7 +248,9 @@ loop_value
 ;
 
 blc_for
-    : TK_FOR TK_IDENTIFIER TK_FROM loop_value TK_TO loop_value TK_DO statements TK_ENDFOR { $$ = ast_make_for($2, $4, $6, $8); }
+    : TK_FOR TK_IDENTIFIER TK_FROM loop_value TK_TO loop_value TK_DO optional_newlines statements TK_ENDFOR {
+        $$ = ast_make_for($2, $4, $6, $9);
+    }
 ;
 
 basic_func
@@ -240,6 +272,11 @@ newlines
     : newlines TK_NEWLINE
     | TK_NEWLINE
     | TK_EOF { /* might be unpractical */ }
+;
+
+optional_newlines
+    : newlines
+    | %empty
 ;
 
 %%

@@ -1,3 +1,26 @@
+/*
+ * Copyright 2015 Mathias Leyendecker / University of Strasbourg
+ *
+ * This file is part of MTurtle.
+ * MTurtle is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * MTurtle is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with MTurtle.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * ====================================================================
+ *
+ * MTurtle Console
+ * Command line interpreter for Turtle graphics
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,6 +28,9 @@
 #include <math.h>
 #include "MTurtle.h"
 #include "consolev2_common.h"
+
+#define PI 3.14159265
+#define RAD2DEG PI / 180.0
 
 extern struct ast_node* scan_file(char*);
 
@@ -48,10 +74,10 @@ struct var_list* var_get(struct exec_env* env, char* name)
             /*printf("Retrieving value for %s: %f\n", cursor->name, cursor->val);*/
             return cursor;
         }
-
+        
         cursor = cursor->next;
     }
-
+    
     return NULL;
 }
 
@@ -59,7 +85,7 @@ struct var_list* var_set(struct exec_env* env, char* name, float val)
 {
     struct var_list* cursor;
     unsigned int hashval;
-
+    
     if(NULL == (cursor = var_get(env, name)))
     {
         /* New Variable */
@@ -76,7 +102,7 @@ struct var_list* var_set(struct exec_env* env, char* name, float val)
     {
         /* Already Defined Variable -- Do Nothing */
     }
-
+    
     cursor->val = val;
     /*printf("%s is set to %f\n", cursor->name, cursor->val);*/
     return cursor;
@@ -159,11 +185,11 @@ struct ast_node* ast_make_symref(char* name)
 struct ast_node* ast_make_assign(char* name, struct ast_node* val)
 {
     struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
-
+    
     ast->type = AST_ASSIGN;
     ast->data.assignexpr.name = strdup(name);
     ast->data.assignexpr.val = val;
-
+    
     return ast;
 }
 
@@ -257,7 +283,7 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
     else if(ast->type == AST_TURTLE)
     {
         turt_action_type tt_action = ast->data.turtleexpr.type;
-
+        
         if(tt_action == TURT_FORWARD)
         {
             int param = ast_eval_as_int(env, ast->data.turtleexpr.param);
@@ -382,14 +408,14 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
     {
         int i = ast_eval_as_int(env, ast->data.forexpr.begin);
         int end = ast_eval_as_int(env, ast->data.forexpr.end);
-
+        
         while(i <= end)
         {
             var_set(env,  ast->data.forexpr.cursorname, (float) i);
             ast_run(env, ast->data.forexpr.loopactions);
             i ++;
         }
-
+        
         var_set(env, ast->data.forexpr.cursorname, (float) i);
     }
     else if(ast->type == AST_LOADFILE)
@@ -397,6 +423,7 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
         struct ast_node* ast2 = scan_file(ast_eval_as_string(env, ast->data.expr.left));
 
         ast_run(env, ast2);
+        ast_destroy(ast2);
     }
     else
     {
@@ -468,7 +495,7 @@ int ast_eval_as_int(struct exec_env* env, struct ast_node* ast)
         fprintf(stderr, "*** FATAL: AST node for EVAL_INT context is NULL!\n");
         exit(EXIT_FAILURE);
     }
-
+    
     if(ast->type == AST_INTEGER)
     {
         return ast->data.intval;
@@ -492,7 +519,7 @@ float ast_eval_as_float(struct exec_env* env, struct ast_node* ast)
         fprintf(stderr, "*** FATAL: AST node for EVAL_FLOAT context is NULL!\n");
         exit(EXIT_FAILURE);
     }
-
+    
     if(ast->type == AST_FLOAT)
     {
         return ast->data.fltval;
@@ -554,18 +581,18 @@ float ast_eval_as_float(struct exec_env* env, struct ast_node* ast)
         spfunc_type type = ast->data.spfuncexpr.type;
         struct ast_node* left = ast->data.spfuncexpr.left;
         struct ast_node* right = ast->data.spfuncexpr.right;
-
+        
         if(type == SPFUNC_COS)
         {
-            return (float) cos(ast_eval_as_float(env, left));
+            return (float) cos(ast_eval_as_float(env, left) * RAD2DEG);
         }
         else if(type == SPFUNC_SIN)
         {
-            return (float) sin(ast_eval_as_float(env, left));
+            return (float) sin(ast_eval_as_float(env, left) * RAD2DEG);
         }
         else if(type == SPFUNC_TAN)
         {
-            return (float) tan(ast_eval_as_float(env, left));
+            return (float) tan(ast_eval_as_float(env, left) * RAD2DEG);
         }
         else if(type == SPFUNC_ABS)
         {
@@ -638,9 +665,9 @@ char* ast_eval_as_string(struct exec_env* env, struct ast_node* ast)
         fprintf(stderr, "*** FATAL: AST node for EVAL_STR context is NULL!\n");
         exit(EXIT_FAILURE);
     }
-
+    
     char* str = malloc_or_die(1024 * sizeof(char));
-
+    
     if(ast->type == AST_STRING)
     {
         sprintf(str, ast->data.strval);
@@ -659,7 +686,7 @@ char* ast_eval_as_string(struct exec_env* env, struct ast_node* ast)
         float fltval = ast_eval_as_float(env, ast);
         sprintf(str, "%f", fltval);
     }
-
+    
     return str;
 }
 
@@ -673,7 +700,7 @@ void ast_destroy(struct ast_node* ast)
     {
         return;
     }
-
+    
     switch(ast->type)
     {
     case AST_PLUS:
@@ -732,6 +759,6 @@ void ast_destroy(struct ast_node* ast)
     default:
         break;
     }
-
+    
     free(ast);
 }

@@ -1,0 +1,7 @@
+size <- 1
+
+while size <= 30 do
+    forward size
+    right 15
+    size <- size * 1.02
+endwhile
