@@ -56,7 +56,13 @@ typedef enum {
     AST_SHOWHELP,
     AST_ECHO,
     AST_LOADFILE,
-    AST_STATEMENTS
+    AST_STATEMENTS,
+    AST_REPEAT,
+    AST_EXPRS,
+    AST_CALL,
+    AST_FUNC,
+    AST_PARAM,
+    AST_RETURN
 } ast_type;
 
 typedef enum {
@@ -148,6 +154,15 @@ struct ast_node {
             turt_action_type type;
             struct ast_node* param;
         } turtleexpr;
+        struct {
+            struct ast_node* count;
+            struct ast_node* loopactions;
+        } repeatexpr;
+        struct {
+            char* name;
+            struct ast_node* params;
+            struct ast_node* body;
+        } funcexpr;
     } data;
 };
 
@@ -155,6 +170,12 @@ struct var_list {
     char* name;
     float val;
     struct var_list* next;
+    bool isFunc;
+    struct {
+        int argc;
+        char** argv;
+        struct ast_node* body;
+    } func;
 };
 
 /*struct include_stack {
@@ -168,6 +189,9 @@ struct exec_env {
     struct var_list** vars;
     int max_vars;
     bool shouldExit;
+    bool hasReturned;
+    int scope;
+    float returnValue;
 };
 
 /*
@@ -199,6 +223,10 @@ struct ast_node* ast_make_if(struct ast_node* condition, struct ast_node* ifacti
 struct ast_node* ast_make_while(struct ast_node* condition, struct ast_node* loopactions);
 
 struct ast_node* ast_make_for(char* cursorname, struct ast_node* begin, struct ast_node* end, struct ast_node* loopactions);
+
+struct ast_node* ast_make_repeat(struct ast_node* count, struct ast_node* loopactions);
+
+struct ast_node* ast_make_function(char* name, struct ast_node* params, struct ast_node* body);
 
 struct ast_node* ast_make_symref(char* name);
 

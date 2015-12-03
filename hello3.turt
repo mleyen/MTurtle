@@ -1,0 +1,7 @@
+fonc test (x)
+    repeter 4 fois
+        avance x
+        gauche
+    finrepeter
+finfonc
+//

@@ -67,7 +67,8 @@
 %token TK_AND TK_OR TK_NOT TK_ENDIF TK_ENDFOR TK_ENDWHILE TK_EQ TK_NEQ TK_GEQ TK_LEQ
 %token TK_ASSIGN TK_NEWLINE TK_NOELSE TK_EOF TK_HIDETURTLE TK_SHOWTURTLE
 %token TK_COS TK_SIN TK_TAN TK_ABS TK_SQRT TK_LOG TK_LOG10 TK_EXP TK_RMDR
-%token TK_MAX TK_MIN TK_CEIL TK_FLOOR
+%token TK_MAX TK_MIN TK_CEIL TK_FLOOR TK_REPEAT TK_TIMES TK_ENDREPEAT
+%token TK_FUNC TK_ENDFUNC TK_RETURN
 %token <name> TK_IDENTIFIER
 %token <intval> TK_INTEGER
 %token <fltval> TK_FLOAT
@@ -82,8 +83,8 @@
 %left '(' ')'
 
 %type <ast> statements statement assignment expression optional_expr boolexpr turt_forward turt_backward turt_left turt_right
-%type <ast> turt_circle turt_centered_circle turt_write echo load_file blc_if blc_while blc_for
-%type <ast> printable number loop_value basic_func
+%type <ast> turt_circle turt_centered_circle turt_write echo load_file blc_if blc_while blc_for blc_repeat
+%type <ast> printable number loop_value basic_func blc_func expr_list idf_list
 %type <boolop> boolop
 
 %start top_level
@@ -125,7 +126,13 @@ statement
     | blc_if { $$ = $1; }
     | blc_while { $$ = $1; }
     | blc_for { $$ = $1; }
+    | blc_repeat { $$ = $1; }
+    | blc_func { $$ = $1; }
+    | TK_RETURN { $$ = ast_make(AST_RETURN, NULL, NULL); }
+    | TK_RETURN expression { $$ = ast_make(AST_RETURN, $2, NULL); }
     | assignment { $$ = $1; }
+    | TK_IDENTIFIER '(' ')' { $$ = ast_make(AST_CALL, ast_make_string($1), NULL); }
+    | TK_IDENTIFIER '(' expr_list ')' { $$ = ast_make(AST_CALL, ast_make_string($1), $3); }
     | TK_IDENTIFIER {
         char* str = malloc(1024);
         snprintf(str, 1024, "-!- Unknown command: %s", $1);
@@ -140,6 +147,8 @@ assignment
 
 expression
     : TK_IDENTIFIER { $$ = ast_make_symref($1); }
+    | TK_IDENTIFIER '(' ')' { $$ = ast_make(AST_CALL, ast_make_string($1), NULL); }
+    | TK_IDENTIFIER '(' expr_list ')' { $$ = ast_make(AST_CALL, ast_make_string($1), $3); }
     | number { $$ = $1; }
     | '(' expression ')' { $$ = $2; }
     | expression '+' expression { $$ = ast_make(AST_PLUS, $1, $3); }
@@ -156,6 +165,11 @@ expression
 optional_expr
     : expression { $$ = $1; }
     | %empty { $$ = ast_make_integer(0); }
+;
+
+expr_list
+    : expression { $$ = ast_make(AST_EXPRS, $1, NULL); }
+    | expression ',' expression { $$ = ast_make(AST_EXPRS, $1, $3); }
 ;
 
 boolexpr
@@ -251,6 +265,24 @@ blc_for
     : TK_FOR TK_IDENTIFIER TK_FROM loop_value TK_TO loop_value TK_DO optional_newlines statements TK_ENDFOR {
         $$ = ast_make_for($2, $4, $6, $9);
     }
+;
+
+blc_repeat
+    : TK_REPEAT expression TK_TIMES optional_newlines statements TK_ENDREPEAT {
+        $$ = ast_make_repeat($2, $5);
+    }
+;
+
+blc_func
+    : TK_FUNC TK_IDENTIFIER '(' idf_list ')' optional_newlines statements TK_ENDFUNC {
+        $$ = ast_make_function($2, $4, $7);
+    }
+;
+
+idf_list
+    : TK_IDENTIFIER { $$ = ast_make(AST_PARAM, ast_make_string($1), NULL); }
+    | TK_IDENTIFIER ',' idf_list { $$ = ast_make(AST_PARAM, ast_make_string($1), $3); }
+    | %empty { $$ = NULL; }
 ;
 
 basic_func
@@ -352,6 +384,7 @@ int main(int argc, char** argv)
     env.vars = vars;
     env.max_vars = MAX_VARS;
     env.shouldExit = false;
+    env.hasReturned = false;
     
     yyextra = &env;
     
@@ -394,6 +427,9 @@ int main(int argc, char** argv)
             /* Cleanup AST */
             ast_destroy(ast);
             ast = NULL;
+            
+            /* Cannot Return from Top Level */
+            env.hasReturned = false;
             
             /* Print Prompt */
             SDL_TerminalPrint(term, ">>> ");

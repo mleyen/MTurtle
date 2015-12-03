@@ -126,18 +126,25 @@ string      \"(\\.|[^"])*\"
     return TK_LOAD;
 }
 
-(endif|finsi|fsi)                 { return TK_ENDIF; }
-(endfor|finpour|fpour)            { return TK_ENDFOR; }
-(endwhile|fintantque|ftantque)    { return TK_ENDWHILE; }
+(endif|finsi|fsi)                   { return TK_ENDIF; }
+(endfor|finpour|fpour)              { return TK_ENDFOR; }
+(endwhile|fintantque|ftantque)      { return TK_ENDWHILE; }
+(endrepeat|finrepeter|frepeter)     { return TK_ENDREPEAT; }
+(endfunc|finfonc|ffonc)             { return TK_ENDFUNC; }
  
-(if|si)           { return TK_IF; }
-(then|alors)      { return TK_THEN; }
-(else|sinon)      { return TK_ELSE; }
-(while|tantque)   { return TK_WHILE; }
-(for|pour)        { return TK_FOR; }
-(from|de)         { return TK_FROM; }
-(to|jusqua)       { return TK_TO; }
-(do|faire)        { return TK_DO; }
+(if|si)             { return TK_IF; }
+(then|alors)        { return TK_THEN; }
+(else|sinon)        { return TK_ELSE; }
+(while|tantque)     { return TK_WHILE; }
+(for|pour)          { return TK_FOR; }
+(from|de)           { return TK_FROM; }
+(to|jusqua)         { return TK_TO; }
+(do|faire)          { return TK_DO; }
+(repeat|repeter)    { return TK_REPEAT; }
+(times|fois)        { return TK_TIMES; }
+
+(func|fonc)                 { return TK_FUNC; }
+(return|renvoyer|renvoie)   { return TK_RETURN; }
 
 (&&|and|et)   { return TK_AND; }
 (\|\||or|ou)  { return TK_OR; }
@@ -183,6 +190,7 @@ string      \"(\\.|[^"])*\"
 "%" { return '%'; }
 "(" { return '('; }
 ")" { return ')'; }
+"," { return ','; }
 ";" { return TK_NEWLINE; /* for debug */ }
 
 <<EOF>> {
@@ -246,7 +254,9 @@ struct ast_node* scan_file(char* name)
     long lg = ftell(file);
     fseek(file, 0, SEEK_SET);
     
+    errno = 0;
     char* buf = malloc(sizeof(char) * lg);
+    perror("malloc");
     if(buf == NULL)
     {
         fprintf(stderr, "*** FATAL: Unable to create buffer of %ld bytes: %s\n", lg, strerror(errno));
@@ -256,12 +266,16 @@ struct ast_node* scan_file(char* name)
     fread(buf, 1, lg, file);
     fclose(file);
     buf[lg] = '\0';
+    printf("%s\n", buf);
     /*printf("buf[lg - 1] = %c\n", buf[lg - 1]);
     printf("buf[lg] = %c\n", buf[lg]);
     printf("buf[lg + 1] = %c\n", buf[lg + 1]);*/
     
     filebuf[filebufindex] = yy_scan_string(buf);
-    free(buf);
+    if(buf != NULL)
+    {
+        free(buf);
+    }
     filebufindex++;
     
     struct ast_node* ast = NULL;

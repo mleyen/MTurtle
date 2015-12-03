@@ -1,0 +1,6 @@
+repeter 4 fois
+    avance 50
+    gauche
+finrepeter
+
+ecrit "Hello World!"

@@ -100,11 +100,52 @@ struct var_list* var_set(struct exec_env* env, char* name, float val)
     }
     else
     {
-        /* Already Defined Variable -- Do Nothing */
+        /* Already Defined Variable */
+        if(cursor->isFunc == true)
+        {
+            printf("-!- Cannot override function %s!\n", name);
+            return cursor;
+        }
     }
     
+    cursor->isFunc = false;
     cursor->val = val;
-    /*printf("%s is set to %f\n", cursor->name, cursor->val);*/
+    printf("%s is set to %f\n", cursor->name, cursor->val);
+    return cursor;
+}
+
+struct var_list* func_set(struct exec_env* env, char* name, int arg_count, char** arg_vector, struct ast_node* body)
+{
+    struct var_list* cursor;
+    unsigned int hashval;
+    
+    if(NULL == (cursor = var_get(env, name)))
+    {
+        /* New Variable */
+        cursor = malloc_or_die(sizeof(struct var_list));
+        if(cursor == NULL || NULL == (cursor->name = strdup(name)))
+        {
+            return NULL;
+        }
+        hashval = strhash(env, name);
+        cursor->next = env->vars[hashval];
+        env->vars[hashval] = cursor;
+    }
+    else
+    {
+        /* Already Defined Variable */
+        if(cursor->isFunc == true)
+        {
+            printf("-!- Cannot override function %s!\n", name);
+            return cursor;
+        }
+    }
+    
+    cursor->isFunc = true;
+    cursor->func.argc = arg_count;
+    cursor->func.argv = arg_vector;
+    cursor->func.body = body;
+    printf("%s is defined\n", cursor->name);
     return cursor;
 }
 
@@ -168,6 +209,29 @@ struct ast_node* ast_make_for(char* cursorname, struct ast_node* begin, struct a
     ast->data.forexpr.begin = begin;
     ast->data.forexpr.end = end;
     ast->data.forexpr.loopactions = loopactions;
+    
+    return ast;
+}
+
+struct ast_node* ast_make_repeat(struct ast_node* count, struct ast_node* loopactions)
+{
+    struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
+    
+    ast->type = AST_REPEAT;
+    ast->data.repeatexpr.count = count;
+    ast->data.repeatexpr.loopactions = loopactions;
+    
+    return ast;
+}
+
+struct ast_node* ast_make_function(char* name, struct ast_node* params, struct ast_node* body)
+{
+    struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
+    
+    ast->type = AST_FUNC;
+    ast->data.funcexpr.name = strdup(name);
+    ast->data.funcexpr.params = params;
+    ast->data.funcexpr.body = body;
     
     return ast;
 }
@@ -252,7 +316,7 @@ struct ast_node* ast_make_string(char* strval)
 
 void ast_run(struct exec_env* env, struct ast_node* ast)
 {
-    if(ast == NULL)
+    if(env->hasReturned == true || ast == NULL)
     {
         return;
     }
@@ -418,12 +482,126 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
         
         var_set(env, ast->data.forexpr.cursorname, (float) i);
     }
+    else if(ast->type == AST_REPEAT)
+    {
+        int count = ast_eval_as_int(env, ast->data.repeatexpr.count);
+        int i = 1;
+
+        while(i <= count)
+        {
+            ast_run(env, ast->data.repeatexpr.loopactions);
+            i ++;
+        }
+    }
     else if(ast->type == AST_LOADFILE)
     {
         struct ast_node* ast2 = scan_file(ast_eval_as_string(env, ast->data.expr.left));
 
         ast_run(env, ast2);
         ast_destroy(ast2);
+    }
+    else if(ast->type == AST_CALL)
+    {
+        /* Lookup Function in Symbol Table */
+        char* name = ast_eval_as_string(env, ast->data.expr.left);
+        struct var_list* var = var_get(env, name);
+        
+        if(var == NULL)
+        {
+            SDL_TerminalPrint(env->term, "-!- Undefined function: %s\n", name);
+            return;
+        }
+        
+        if(!(var->isFunc))
+        {
+            SDL_TerminalPrint(env->term, "-!- %s: is not a function\n", name);
+            return;
+        }
+        
+        /* Prepare Environment */
+        struct exec_env env2;
+        env2.screen = env->screen;
+        env2.turt = env->turt;
+        env2.term = env->term;
+        /*env2.vars = copy_vars(env->vars);*/
+        env2.vars = malloc(sizeof(struct var_list) * env->max_vars);
+        /* TODO find a way to copy the current symbol table */
+        env2.max_vars = env->max_vars;
+        env2.scope = env->scope + 1;
+        env2.hasReturned = false;
+        env2.shouldExit = false;
+        
+        /* Push Params */
+        struct ast_node* cursor = ast->data.expr.right;
+        int i = 0;
+        while(cursor != NULL && cursor->type == AST_EXPRS)
+        {
+            if(i >= var->func.argc) break;
+            
+            char* param_name = var->func.argv[i];
+            float param_val = ast_eval_as_float(env, cursor->data.expr.left);
+            var_set(&env2, param_name, param_val);
+            
+            i++;
+            cursor = cursor->data.expr.right;
+        }
+        
+        /* Call Function */
+        ast_run(&env2, var->func.body);
+        
+        /* Cleanup */
+        free(env2.vars);
+        if(env2.shouldExit == true)
+        {
+            /* Propagate Exit */
+            env->shouldExit = true;
+        }
+    }
+    else if(ast->type == AST_RETURN)
+    {
+        if(ast->data.expr.left != NULL)
+        {
+            env->returnValue = ast_eval_as_float(env, ast->data.expr.left);
+        }
+        
+        env->hasReturned = true;
+    }
+    else if(ast->type == AST_FUNC)
+    {
+        /* Count Args */
+        int arg_count = 0;
+        struct ast_node* cursor = ast->data.funcexpr.params;
+        
+        while(cursor != NULL && cursor->type == AST_PARAM)
+        {
+            arg_count ++;
+            cursor = cursor->data.expr.right;
+        }
+        
+        /*printf("arg_count = %d\n", arg_count);*/
+        
+        /* Make Arg Vector */
+        char** arg_vector = NULL;
+        if(arg_count > 0)
+        {
+            arg_vector = malloc(sizeof(char*) * arg_count);
+            
+            cursor = ast->data.funcexpr.params;
+            int i = 0;
+            
+            while(cursor != NULL && cursor->type == AST_PARAM)
+            {
+                if(i >= arg_count) break;
+                arg_vector[i] = ast_eval_as_string(env, cursor->data.expr.left);
+                /*printf("arg_vector[%d] = %s\n", i, arg_vector[i]);*/
+                
+                i ++;
+                cursor = cursor->data.expr.right;
+            }
+        }
+        
+        /* Put Function to Symbol Table */
+        func_set(env, ast->data.funcexpr.name, arg_count, arg_vector, ast->data.funcexpr.body);
     }
     else
     {
@@ -650,6 +828,65 @@ float ast_eval_as_float(struct exec_env* env, struct ast_node* ast)
             fprintf(stderr, "*** FATAL: invalid spfunc_type");
             exit(EXIT_FAILURE);
         }
+    }
+    else if(ast->type == AST_CALL)
+    {
+        /* Lookup Function in Symbol Table */
+        char* name = ast_eval_as_string(env, ast->data.expr.left);
+        struct var_list* var = var_get(env, name);
+        
+        if(var == NULL)
+        {
+            SDL_TerminalPrint(env->term, "-!- Undefined function: %s\n", name);
+            return;
+        }
+        
+        if(!(var->isFunc))
+        {
+            SDL_TerminalPrint(env->term, "-!- %s: is not a function\n", name);
+            return;
+        }
+        
+        /* Prepare Environment */
+        struct exec_env env2;
+        env2.screen = env->screen;
+        env2.turt = env->turt;
+        env2.term = env->term;
+        /*env2.vars = copy_vars(env->vars);*/
+        env2.vars = malloc(sizeof(struct var_list) * env->max_vars);
+        /* TODO find a way to copy the current symbol table */
+        env2.max_vars = env->max_vars;
+        env2.scope = env->scope + 1;
+        env2.hasReturned = false;
+        env2.shouldExit = false;
+        
+        /* Push Params */
+        struct ast_node* cursor = ast->data.expr.right;
+        int i = 0;
+        while(cursor != NULL && cursor->type == AST_EXPRS)
+        {
+            if(i >= var->func.argc) break;
+            
+            char* param_name = var->func.argv[i];
+            float param_val = ast_eval_as_float(env, cursor->data.expr.left);
+            var_set(&env2, param_name, param_val);
+            
+            i++;
+            cursor = cursor->data.expr.right;
+        }
+        
+        /* Call Function */
+        ast_run(&env2, var->func.body);
+        
+        /* Cleanup */
+        free(env2.vars);
+        if(env2.shouldExit == true)
+        {
+            /* Propagate Exit */
+            env->shouldExit = true;
+        }
+        
+        return env2.returnValue;
     }
     else
     {
