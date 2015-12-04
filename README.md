@@ -78,8 +78,8 @@ For technical reasons, duplicates of headers from SDL_draw and SDL_gfx are inclu
 They have been slightly altered to #include libraries from the default include path rather than the current
 directory. Nothing else has been changed.
 
-The example programs (hello.c, lantern.c, spirale.c, draw.c and olympics.c) and .turt scripts (hello.turt
-and spirale.turt) are hereby released under the public domain.
+The example programs (hello.c, lantern.c, spirale.c, draw.c and olympics.c) and .turt scripts (hello.turt,
+spirale.turt and fractal.turt) are hereby released under the public domain.
 
 The MiscFixed font is available under the public domain.
 

@@ -28,6 +28,7 @@
     #include <stdlib.h>
     #include <stdbool.h>
     #include <string.h>
+    /*#include <unistd.h>*/
     #include <errno.h>
     #include <SDL/SDL.h>
     #include <SDL/SDL_image.h>
@@ -169,7 +170,7 @@ optional_expr
 
 expr_list
     : expression { $$ = ast_make(AST_EXPRS, $1, NULL); }
-    | expression ',' expression { $$ = ast_make(AST_EXPRS, $1, $3); }
+    | expression ',' expr_list { $$ = ast_make(AST_EXPRS, $1, $3); }
 ;
 
 boolexpr
@@ -322,8 +323,10 @@ SDL_Terminal* term;
 
 /*struct exec_env* env;*/
 
-#define MAX_VARS 256
-static struct var_list* vars[MAX_VARS];
+/*#define MAX_VARS 256
+static struct var_list* vars[MAX_VARS];*/
+
+/*static struct var_list* varlist = NULL;*/
 
 void yyerror(struct ast_node** ast, const char* msg)
 {
@@ -332,6 +335,8 @@ void yyerror(struct ast_node** ast, const char* msg)
 
 int main(int argc, char** argv)
 {
+    /*printf("I am process %d\n", getpid());*/
+    
     /* Init SDL */
     if(SDL_Init(SDL_INIT_VIDEO) == -1)
     {
@@ -381,8 +386,9 @@ int main(int argc, char** argv)
     env.term = term;
     env.screen = screen;
     env.turt = turt;
-    env.vars = vars;
-    env.max_vars = MAX_VARS;
+    /*env.vars = vars;
+    env.max_vars = MAX_VARS;*/
+    env.varlist = NULL;
     env.shouldExit = false;
     env.hasReturned = false;
     

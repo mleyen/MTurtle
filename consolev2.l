@@ -241,9 +241,6 @@ struct ast_node* scan_file(char* name)
     FILE* file = fopen(name, "r");
     if(file == NULL)
     {
-        /*fprintf(stderr, "-!- Unable to open %s: %s\n", name, strerror(errno));
-        return NULL;*/
-        
         char* str = malloc(1024);
         snprintf(str, 1024, "-!- Unable to open %s: %s", name, strerror(errno));
         struct ast_node* ast = ast_make(AST_ECHO, ast_make_string(str), NULL);
@@ -256,7 +253,7 @@ struct ast_node* scan_file(char* name)
     
     errno = 0;
     char* buf = malloc(sizeof(char) * lg);
-    perror("malloc");
+    /*perror("malloc");*/
     if(buf == NULL)
     {
         fprintf(stderr, "*** FATAL: Unable to create buffer of %ld bytes: %s\n", lg, strerror(errno));
@@ -266,7 +263,7 @@ struct ast_node* scan_file(char* name)
     fread(buf, 1, lg, file);
     fclose(file);
     buf[lg] = '\0';
-    printf("%s\n", buf);
+    /*printf("%s\n", buf);*/
     /*printf("buf[lg - 1] = %c\n", buf[lg - 1]);
     printf("buf[lg] = %c\n", buf[lg]);
     printf("buf[lg + 1] = %c\n", buf[lg + 1]);*/

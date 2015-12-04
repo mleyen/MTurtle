@@ -178,19 +178,15 @@ struct var_list {
     } func;
 };
 
-/*struct include_stack {
-    FILE* handle;
-};*/
-
 struct exec_env {
     SDL_Terminal* term;
     SDL_Surface* screen;
     struct Turtle* turt;
-    struct var_list** vars;
-    int max_vars;
+    /*struct var_list** vars;*/
+    struct var_list* varlist;
+    /*int max_vars;*/
     bool shouldExit;
     bool hasReturned;
-    int scope;
     float returnValue;
 };
 
@@ -204,11 +200,15 @@ void* malloc_or_die(size_t size);
  * LOOKUP TABLE API
  */
 
-unsigned int strhash(struct exec_env* env, char* str);
-
 struct var_list* var_get(struct exec_env* env, char* name);
 
 struct var_list* var_set(struct exec_env* env, char* name, float val);
+
+struct var_list* func_set(struct exec_env* env, char* name, int arg_count, char** arg_vector, struct ast_node* body);
+
+void var_copy_env(struct exec_env* src, struct exec_env* dest);
+
+void var_clear_all(struct exec_env* env);
 
 /*
  * AST GENERATION API

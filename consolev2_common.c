@@ -54,99 +54,198 @@ void* malloc_or_die(size_t size)
  * LOOKUP TABLE API
  */
 
-unsigned int strhash(struct exec_env* env, char* str)
-{
-    unsigned int hashval;
-    for(hashval = 0; *str != '\0'; str++)
-    {
-        hashval = *str + 31 * hashval;
-    }
-    return hashval % env->max_vars;
-}
-
 struct var_list* var_get(struct exec_env* env, char* name)
 {
-    struct var_list* cursor = env->vars[strhash(env, name)];
-    while(cursor != NULL)
+    struct var_list* cursor = env->varlist;
+    
+    while(cursor != NULL && strcmp(cursor->name, name) != 0)
     {
-        if(strcmp(name, cursor->name) == 0)
-        {
-            /*printf("Retrieving value for %s: %f\n", cursor->name, cursor->val);*/
-            return cursor;
-        }
-        
         cursor = cursor->next;
     }
     
-    return NULL;
+    return cursor;
 }
 
 struct var_list* var_set(struct exec_env* env, char* name, float val)
 {
-    struct var_list* cursor;
-    unsigned int hashval;
+    /* Check for Existing Variable */
+    struct var_list* cursor = var_get(env, name);
     
-    if(NULL == (cursor = var_get(env, name)))
+    if(cursor != NULL)
     {
-        /* New Variable */
-        cursor = malloc_or_die(sizeof(struct var_list));
-        if(cursor == NULL || NULL == (cursor->name = strdup(name)))
+        /* Already Defined Variable */
+        if(strcmp(cursor->name, name) != 0)
         {
-            return NULL;
+            fprintf(stderr, "CAUTION! Cursor name and symbol name do not match!\n");
         }
-        hashval = strhash(env, name);
-        cursor->next = env->vars[hashval];
-        env->vars[hashval] = cursor;
+        
+        if(cursor->isFunc == true)
+        {
+            SDL_TerminalPrint(env->term, "-!- Cannot override function %s!\n", name);
+            return cursor;
+        }
+        
+        cursor->isFunc = false;
+        cursor->val = val;
     }
     else
     {
-        /* Already Defined Variable */
-        if(cursor->isFunc == true)
+        /* New Variable */
+        cursor = malloc_or_die(sizeof(struct var_list));
+        
+        cursor->name = strdup(name);
+        cursor->isFunc = false;
+        cursor->val = val;
+        
+        if(env->varlist == NULL)
         {
-            printf("-!- Cannot override function %s!\n", name);
-            return cursor;
+            /* First Variable */
+            env->varlist = cursor;
         }
+        else
+        {
+            /* Put to End of List */
+            struct var_list* cursor2 = env->varlist;
+            while(cursor2->next != NULL)
+            {
+                cursor2 = cursor2->next;
+            }
+            
+            cursor2->next = cursor;
+        }
+        
+        cursor->next = NULL;
     }
-    
-    cursor->isFunc = false;
-    cursor->val = val;
-    printf("%s is set to %f\n", cursor->name, cursor->val);
-    return cursor;
 }
 
 struct var_list* func_set(struct exec_env* env, char* name, int arg_count, char** arg_vector, struct ast_node* body)
 {
-    struct var_list* cursor;
-    unsigned int hashval;
+    /* Check for Existing Variable */
+    struct var_list* cursor = var_get(env, name);
     
-    if(NULL == (cursor = var_get(env, name)))
+    if(cursor != NULL)
     {
-        /* New Variable */
-        cursor = malloc_or_die(sizeof(struct var_list));
-        if(cursor == NULL || NULL == (cursor->name = strdup(name)))
+        /* Already Defined Variable */
+        if(strcmp(cursor->name, name) != 0)
         {
-            return NULL;
+            fprintf(stderr, "CAUTION! Cursor name and symbol name do not match!\n");
         }
-        hashval = strhash(env, name);
-        cursor->next = env->vars[hashval];
-        env->vars[hashval] = cursor;
+        
+        if(cursor->isFunc == true)
+        {
+            SDL_TerminalPrint(env->term, "-!- Cannot override function %s!\n", name);
+            return cursor;
+        }
+        
+        cursor->isFunc = true;
+        cursor->func.argc = arg_count;
+        cursor->func.argv = arg_vector;
+        cursor->func.body = body;
     }
     else
     {
-        /* Already Defined Variable */
-        if(cursor->isFunc == true)
+        /* New Variable */
+        cursor = malloc_or_die(sizeof(struct var_list));
+        
+        cursor->name = strdup(name);
+        cursor->isFunc = true;
+        cursor->func.argc = arg_count;
+        cursor->func.argv = arg_vector;
+        cursor->func.body = body;
+        
+        if(env->varlist == NULL)
         {
-            printf("-!- Cannot override function %s!\n", name);
-            return cursor;
+            /* First Variable */
+            env->varlist = cursor;
         }
+        else
+        {
+            /* Put to End of List */
+            struct var_list* cursor2 = env->varlist;
+            while(cursor2->next != NULL)
+            {
+                cursor2 = cursor2->next;
+            }
+            
+            cursor2->next = cursor;
+        }
+        
+        cursor->next = NULL;
     }
     
-    cursor->isFunc = true;
-    cursor->func.argc = arg_count;
-    cursor->func.argv = arg_vector;
-    cursor->func.body = body;
-    printf("%s is defined\n", cursor->name);
-    return cursor;
+    SDL_TerminalPrint(env->term, "%s is defined\n", cursor->name);
+}
+
+void var_copy_env(struct exec_env* src, struct exec_env* dest)
+{
+    struct var_list* cursor1 = src->varlist;
+    struct var_list* cursor2 = NULL;
+    struct var_list* temp = NULL;
+    
+    while(cursor1 != NULL)
+    {
+        temp = malloc_or_die(sizeof(struct var_list));
+        
+        temp->next = NULL;
+        temp->name = strdup(cursor1->name);
+        temp->isFunc = cursor1->isFunc;
+        if(cursor1->isFunc == false)
+        {
+            temp->val = cursor1->val;
+        }
+        else
+        {
+            temp->func.argc = cursor1->func.argc;
+            temp->func.argv = cursor1->func.argv;
+            temp->func.body = cursor1->func.body;
+        }
+        
+        if(dest->varlist == NULL)
+        {
+            dest->varlist = temp;
+        }
+        else
+        {
+            if(cursor2 == NULL)
+            {
+                fprintf(stderr, "CAUTION! cursor2 is NULL and should not be NULL!\n");
+            }
+            cursor2->next = temp;
+        }
+        
+        cursor2 = temp;
+        
+        cursor1 = cursor1->next;
+    }
+}
+
+void var_clear_all(struct exec_env* env)
+{
+    struct var_list* cursor = env->varlist;
+    
+    while(cursor != NULL)
+    {
+        struct var_list* temp = cursor;
+        cursor = cursor->next;
+        
+        /*if(temp->isFunc)
+        {
+            int i = 0;
+            for(i = 0; i < temp->func.argc; i++)
+            {
+                free(temp->func.argv[i]);
+            }
+            free(temp->func.argv);
+            ast_destroy(temp->func.body);
+        }*/
+        
+        free(temp->name);
+        
+        free(temp);
+    }
+    
+    /*free(env->varlist);*/
+    env->varlist = NULL;
 }
 
 /*
@@ -523,13 +622,11 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
         env2.screen = env->screen;
         env2.turt = env->turt;
         env2.term = env->term;
-        /*env2.vars = copy_vars(env->vars);*/
-        env2.vars = malloc(sizeof(struct var_list) * env->max_vars);
-        /* TODO find a way to copy the current symbol table */
-        env2.max_vars = env->max_vars;
-        env2.scope = env->scope + 1;
         env2.hasReturned = false;
         env2.shouldExit = false;
+        env2.varlist = NULL;
+        
+        var_copy_env(env, &env2);
         
         /* Push Params */
         struct ast_node* cursor = ast->data.expr.right;
@@ -550,7 +647,7 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
         ast_run(&env2, var->func.body);
         
         /* Cleanup */
-        free(env2.vars);
+        var_clear_all(&env2);
         if(env2.shouldExit == true)
         {
             /* Propagate Exit */
@@ -578,8 +675,6 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
             cursor = cursor->data.expr.right;
         }
         
-        /*printf("arg_count = %d\n", arg_count);*/
-        
         /* Make Arg Vector */
         char** arg_vector = NULL;
         if(arg_count > 0)
@@ -593,7 +688,6 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
             {
                 if(i >= arg_count) break;
                 arg_vector[i] = ast_eval_as_string(env, cursor->data.expr.left);
-                /*printf("arg_vector[%d] = %s\n", i, arg_vector[i]);*/
                 
                 i ++;
                 cursor = cursor->data.expr.right;
@@ -603,6 +697,10 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
         /* Put Function to Symbol Table */
         func_set(env, ast->data.funcexpr.name, arg_count, arg_vector, ast->data.funcexpr.body);
     }
+    /*else if(ast->type == AST_DUMP_VARS)
+    {
+        dump_all_vars(env);
+    }*/
     else
     {
         fprintf(stderr, "*** FATAL: invalid AST node for EXEC context\n");
@@ -680,12 +778,7 @@ int ast_eval_as_int(struct exec_env* env, struct ast_node* ast)
     }
     else
     {
-        /* meh */
         float fltval = ast_eval_as_float(env, ast);
-        /*if(fltval == INFINITY)
-        {
-            return 0;
-        }*/
         return (int) fltval;
     }
 }
@@ -724,14 +817,12 @@ float ast_eval_as_float(struct exec_env* env, struct ast_node* ast)
         if(right == 0.0f)
         {
             SDL_TerminalPrint(env->term, "-!- Division by zero will result in undefined behaviour!\n");
-            /*return INFINITY;*/
             return 0.0f;
         }
         return ast_eval_as_float(env, ast->data.expr.left) / right;
     }
     else if(ast->type == AST_MOD)
     {
-        /*return ast_eval_as_float(env, ast->data.expr.left) % ast_eval_as_float(env, ast->data.expr.right);*/
         float right = ast_eval_as_float(env, ast->data.expr.right);
         if(right == 0.0f)
         {
@@ -852,13 +943,11 @@ float ast_eval_as_float(struct exec_env* env, struct ast_node* ast)
         env2.screen = env->screen;
         env2.turt = env->turt;
         env2.term = env->term;
-        /*env2.vars = copy_vars(env->vars);*/
-        env2.vars = malloc(sizeof(struct var_list) * env->max_vars);
-        /* TODO find a way to copy the current symbol table */
-        env2.max_vars = env->max_vars;
-        env2.scope = env->scope + 1;
         env2.hasReturned = false;
         env2.shouldExit = false;
+        env2.varlist = NULL;
+        
+        var_copy_env(env, &env2);
         
         /* Push Params */
         struct ast_node* cursor = ast->data.expr.right;
@@ -879,7 +968,7 @@ float ast_eval_as_float(struct exec_env* env, struct ast_node* ast)
         ast_run(&env2, var->func.body);
         
         /* Cleanup */
-        free(env2.vars);
+        var_clear_all(&env2);
         if(env2.shouldExit == true)
         {
             /* Propagate Exit */
@@ -993,9 +1082,19 @@ void ast_destroy(struct ast_node* ast)
     case AST_TURTLE:
         ast_destroy(ast->data.turtleexpr.param);
         break;
+    case AST_REPEAT:
+        ast_destroy(ast->data.repeatexpr.loopactions);
+        break;
+    /*case AST_FUNC:
+        ast_destroy(ast->data.funcexpr.params);
+        ast_destroy(ast->data.funcexpr.body);
+        break;*/
     default:
         break;
     }
     
-    free(ast);
+    if(ast->type != AST_FUNC)
+    {
+        free(ast);
+    }
 }
