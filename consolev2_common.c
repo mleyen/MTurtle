@@ -50,6 +50,19 @@ void* malloc_or_die(size_t size)
     return ptr;
 }
 
+int clamp(int val, int lower, int upper)
+{
+    if(val < lower)
+    {
+        return lower;
+    }
+    if(val > upper)
+    {
+        return upper;
+    }
+    return val;
+}
+
 /*
  * LOOKUP TABLE API
  */
@@ -228,23 +241,11 @@ void var_clear_all(struct exec_env* env)
         struct var_list* temp = cursor;
         cursor = cursor->next;
         
-        /*if(temp->isFunc)
-        {
-            int i = 0;
-            for(i = 0; i < temp->func.argc; i++)
-            {
-                free(temp->func.argv[i]);
-            }
-            free(temp->func.argv);
-            ast_destroy(temp->func.body);
-        }*/
-        
         free(temp->name);
         
         free(temp);
     }
     
-    /*free(env->varlist);*/
     env->varlist = NULL;
 }
 
@@ -260,7 +261,6 @@ struct ast_node* ast_make(ast_type type, struct ast_node* left, struct ast_node*
     ast->data.expr.left = left;
     ast->data.expr.right = right;
     
-    /* should be enough */
     return ast;
 }
 
@@ -409,6 +409,18 @@ struct ast_node* ast_make_string(char* strval)
     return ast;
 }
 
+struct ast_node* ast_make_setcolor(struct ast_node* r, struct ast_node* g, struct ast_node* b)
+{
+    struct ast_node* ast = malloc_or_die(sizeof(struct ast_node));
+    
+    ast->type = AST_SET_COLOR;
+    ast->data.setcolorexpr.r = r;
+    ast->data.setcolorexpr.g = g;
+    ast->data.setcolorexpr.b = b;
+    
+    return ast;
+}
+
 /*
  * AST EXECUTION API
  */
@@ -426,13 +438,11 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
     
     if(ast->type == AST_STATEMENTS)
     {
-        /* Do you smell the stack overflow over there? */
         ast_run(env, ast->data.expr.left);
         ast_run(env, ast->data.expr.right);
     }
     else if(ast->type == AST_EXIT)
     {
-        /* TODO end current run level */
         env->shouldExit = true;
     }
     else if(ast->type == AST_SHOWHELP)
@@ -539,6 +549,14 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
             fprintf(stderr, "*** FATAL: invalid turt_action\n");
             exit(EXIT_FAILURE);
         }
+    }
+    else if(ast->type == AST_SET_COLOR)
+    {
+        int r = clamp(ast_eval_as_int(env, ast->data.setcolorexpr.r), 0, 255);
+        int g = clamp(ast_eval_as_int(env, ast->data.setcolorexpr.g), 0, 255);
+        int b = clamp(ast_eval_as_int(env, ast->data.setcolorexpr.b), 0, 255);
+        
+        TT_SetColor(env->turt, r, g, b);
     }
     else if(ast->type == AST_ASSIGN)
     {
@@ -697,10 +715,6 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
         /* Put Function to Symbol Table */
         func_set(env, ast->data.funcexpr.name, arg_count, arg_vector, ast->data.funcexpr.body);
     }
-    /*else if(ast->type == AST_DUMP_VARS)
-    {
-        dump_all_vars(env);
-    }*/
     else
     {
         fprintf(stderr, "*** FATAL: invalid AST node for EXEC context\n");
@@ -1084,6 +1098,11 @@ void ast_destroy(struct ast_node* ast)
         break;
     case AST_REPEAT:
         ast_destroy(ast->data.repeatexpr.loopactions);
+        break;
+    case AST_SET_COLOR:
+        ast_destroy(ast->data.setcolorexpr.r);
+        ast_destroy(ast->data.setcolorexpr.g);
+        ast_destroy(ast->data.setcolorexpr.b);
         break;
     /*case AST_FUNC:
         ast_destroy(ast->data.funcexpr.params);

@@ -62,7 +62,8 @@ typedef enum {
     AST_CALL,
     AST_FUNC,
     AST_PARAM,
-    AST_RETURN
+    AST_RETURN,
+    AST_SET_COLOR
 } ast_type;
 
 typedef enum {
@@ -100,7 +101,6 @@ typedef enum {
     TURT_HIDE,
     TURT_SHOW,
     TURT_WRITE,
-    TURT_SET_COLOR, /* might go unused */
     TURT_CENTERED_CIRCLE,
     TURT_CIRCLE,
     TURT_HOME,
@@ -163,6 +163,11 @@ struct ast_node {
             struct ast_node* params;
             struct ast_node* body;
         } funcexpr;
+        struct {
+            struct ast_node* r;
+            struct ast_node* g;
+            struct ast_node* b;
+        } setcolorexpr;
     } data;
 };
 
@@ -182,9 +187,7 @@ struct exec_env {
     SDL_Terminal* term;
     SDL_Surface* screen;
     struct Turtle* turt;
-    /*struct var_list** vars;*/
     struct var_list* varlist;
-    /*int max_vars;*/
     bool shouldExit;
     bool hasReturned;
     float returnValue;
@@ -241,6 +244,8 @@ struct ast_node* ast_make_integer(int intval);
 struct ast_node* ast_make_float(float fltval);
 
 struct ast_node* ast_make_string(char* strval);
+
+struct ast_node* ast_make_setcolor(struct ast_node* r, struct ast_node* g, struct ast_node* b);
 
 /*
  * AST EXECUTION API

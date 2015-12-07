@@ -1,6 +1,7 @@
 CPP=gcc
 CFLAGS=-O3 -I /usr/local/include -I /usr/include -I /usr/include/SDL -I /usr/local/include/SDL -g
-LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lSDL_terminal -lm -lfl -ly
+LDFLAGS=-lSDL -lSDL_draw -lSDL_gfx -lSDL_image -lSDL_ttf -lm
+LDFLAGS2=${LDFLAGS} -lSDL_terminal -lfl -ly
 
 all: hello spirale draw lantern olympics console
 
@@ -41,13 +42,13 @@ olympics.o: olympics.c
 	${CPP} $(CFLAGS) -o olympics.o -c olympics.c
 
 console: MTurtleConsole.o MTurtle.o
-	${CPP} $(CFLAGS) -o console MTurtleConsole.o MTurtle.o ${LDFLAGS}
+	${CPP} $(CFLAGS) -o console MTurtleConsole.o MTurtle.o ${LDFLAGS} -lSDL_terminal
 
 MTurtleConsole.o: MTurtleConsole.c
 	${CPP} $(CFLAGS) -o MTurtleConsole.o -c MTurtleConsole.c
 
 consolev2: consolev2_common.o MTurtle.o consolev2.tab.o consolev2.yy.o
-	${CPP} $(CFLAGS) -o consolev2 consolev2_common.o MTurtle.o consolev2.tab.o consolev2.yy.o ${LDFLAGS}
+	${CPP} $(CFLAGS) -o consolev2 consolev2_common.o MTurtle.o consolev2.tab.o consolev2.yy.o ${LDFLAGS2}
 
 consolev2.tab.o: consolev2.tab.c consolev2.y
 	${CPP} $(CFLAGS) -o consolev2.tab.o -c consolev2.tab.c

@@ -21,23 +21,18 @@
  * Command line interpreter for Turtle graphics
  */
  
- /*%error-verbose*/
 %define parse.error verbose
 %code requires {
     #include <stdio.h>
     #include <stdlib.h>
     #include <stdbool.h>
     #include <string.h>
-    /*#include <unistd.h>*/
     #include <errno.h>
     #include <SDL/SDL.h>
     #include <SDL/SDL_image.h>
     #include <SDL/SDL_ttf.h>
-    /*#include <SDL/SDL_terminal.h>*/ /* not protected against double inclusion */
     #include "MTurtle.h"
     #include "consolev2_common.h"
-    
-    /*#define YYPARSE_PARAM ast_result*/
     
     /* Declarations from Lex */
     void yyerror(struct ast_node** ast_result, const char* msg);
@@ -45,10 +40,6 @@
     extern FILE* yyin;
     extern void scan_string(char* s);
     extern void clean_buffer();
-    /*typedef struct yy_buffer_state * YY_BUFFER_STATE;
-    extern int yyparse();
-    extern YY_BUFFER_STATE yy_scan_string(char * str);
-    extern void yy_delete_buffer(YY_BUFFER_STATE buffer);*/
 }
 
 %union {
@@ -70,6 +61,8 @@
 %token TK_COS TK_SIN TK_TAN TK_ABS TK_SQRT TK_LOG TK_LOG10 TK_EXP TK_RMDR
 %token TK_MAX TK_MIN TK_CEIL TK_FLOOR TK_REPEAT TK_TIMES TK_ENDREPEAT
 %token TK_FUNC TK_ENDFUNC TK_RETURN
+%token TK_COLOR TK_CL_RED TK_CL_GREEN TK_CL_BLUE TK_CL_YELLOW TK_CL_TEAL TK_CL_MAGENTA
+%token TK_CL_ORANGE TK_CL_BLACK TK_CL_WHITE TK_CL_GREY TK_CL_SILVER
 %token <name> TK_IDENTIFIER
 %token <intval> TK_INTEGER
 %token <fltval> TK_FLOAT
@@ -85,7 +78,7 @@
 
 %type <ast> statements statement assignment expression optional_expr boolexpr turt_forward turt_backward turt_left turt_right
 %type <ast> turt_circle turt_centered_circle turt_write echo load_file blc_if blc_while blc_for blc_repeat
-%type <ast> printable number loop_value basic_func blc_func expr_list idf_list
+%type <ast> printable number loop_value basic_func blc_func expr_list idf_list turt_set_color std_color
 %type <boolop> boolop
 
 %start top_level
@@ -122,6 +115,7 @@ statement
     | TK_HOME { $$ = ast_make_turtle(TURT_HOME, NULL); }
     | TK_CLEAR { $$ = ast_make_turtle(TURT_CLEAR, NULL); }
     | TK_RESET { $$ = ast_make_turtle(TURT_RESET, NULL); }
+    | turt_set_color { $$ = $1; }
     | echo { $$ = $1; }
     | load_file { $$ = $1; }
     | blc_if { $$ = $1; }
@@ -143,7 +137,6 @@ statement
 
 assignment
     : TK_IDENTIFIER TK_ASSIGN expression { $$ = ast_make_assign($1, $3); }
-    /*| assignment TK_ASSIGN expression*/
 ;
 
 expression
@@ -236,6 +229,25 @@ turt_write
     : TK_WRITE printable { $$ = ast_make_turtle(TURT_WRITE, $2); }
 ;
 
+turt_set_color
+    : TK_COLOR std_color { $$ = $2; }
+    | TK_COLOR number number number { $$ = ast_make_setcolor($2, $3, $4); }
+;
+
+std_color
+    : TK_CL_RED     { $$ = ast_make_setcolor(ast_make_integer(255), ast_make_integer(0),    ast_make_integer(0));   }
+    | TK_CL_GREEN   { $$ = ast_make_setcolor(ast_make_integer(0),   ast_make_integer(255),  ast_make_integer(0));   }
+    | TK_CL_BLUE    { $$ = ast_make_setcolor(ast_make_integer(0),   ast_make_integer(0),    ast_make_integer(255)); }
+    | TK_CL_YELLOW  { $$ = ast_make_setcolor(ast_make_integer(255), ast_make_integer(255),  ast_make_integer(0));   }
+    | TK_CL_TEAL    { $$ = ast_make_setcolor(ast_make_integer(0),   ast_make_integer(255),  ast_make_integer(255)); }
+    | TK_CL_MAGENTA { $$ = ast_make_setcolor(ast_make_integer(255), ast_make_integer(0),    ast_make_integer(255)); }
+    | TK_CL_ORANGE  { $$ = ast_make_setcolor(ast_make_integer(255), ast_make_integer(69),   ast_make_integer(0));   }
+    | TK_CL_BLACK   { $$ = ast_make_setcolor(ast_make_integer(0),   ast_make_integer(0),    ast_make_integer(0));   }
+    | TK_CL_WHITE   { $$ = ast_make_setcolor(ast_make_integer(255), ast_make_integer(255),  ast_make_integer(255)); }
+    | TK_CL_GREY    { $$ = ast_make_setcolor(ast_make_integer(128), ast_make_integer(128),  ast_make_integer(128)); }
+    | TK_CL_SILVER  { $$ = ast_make_setcolor(ast_make_integer(192), ast_make_integer(192),  ast_make_integer(192)); }
+;
+
 echo
     : TK_ECHO printable { $$ = ast_make(AST_ECHO, $2, NULL); }
 ;
@@ -304,7 +316,7 @@ basic_func
 newlines
     : newlines TK_NEWLINE
     | TK_NEWLINE
-    | TK_EOF { /* might be unpractical */ }
+    | TK_EOF
 ;
 
 optional_newlines
@@ -321,13 +333,6 @@ SDL_Surface* screen;
 struct Turtle* turt;
 SDL_Terminal* term;
 
-/*struct exec_env* env;*/
-
-/*#define MAX_VARS 256
-static struct var_list* vars[MAX_VARS];*/
-
-/*static struct var_list* varlist = NULL;*/
-
 void yyerror(struct ast_node** ast, const char* msg)
 {
     SDL_TerminalPrint(term, "\033[31m%s\033[0m\n", msg);
@@ -335,8 +340,6 @@ void yyerror(struct ast_node** ast, const char* msg)
 
 int main(int argc, char** argv)
 {
-    /*printf("I am process %d\n", getpid());*/
-    
     /* Init SDL */
     if(SDL_Init(SDL_INIT_VIDEO) == -1)
     {
@@ -345,7 +348,7 @@ int main(int argc, char** argv)
     }
 
     /* Init Screen Surface */
-    screen = SDL_SetVideoMode(960, 480, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
+    screen = SDL_SetVideoMode(1140, 480, 32, SDL_HWSURFACE | SDL_DOUBLEBUF);
     if(screen == NULL)
     {
         fprintf(stderr, "SDL_SetVideoMode() failed: %s\n", SDL_GetError());
@@ -365,7 +368,7 @@ int main(int argc, char** argv)
     /* Init MTurtle */
     TT_InitMinimal(screen);
     turt = TT_Create(640, 480, 0, 0, 0);
-    TT_SetSurfacePos(turt, 320, 0);
+    TT_SetSurfacePos(turt, 500, 0);
     TT_PenDown(turt);
 
     /* Init Terminal */
@@ -386,8 +389,6 @@ int main(int argc, char** argv)
     env.term = term;
     env.screen = screen;
     env.turt = turt;
-    /*env.vars = vars;
-    env.max_vars = MAX_VARS;*/
     env.varlist = NULL;
     env.shouldExit = false;
     env.hasReturned = false;

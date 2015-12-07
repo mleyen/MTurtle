@@ -37,7 +37,6 @@
 #define PI 3.14159265
 #define RAD2DEG PI / 180.0
 
-/* TODO make these configurable at runtime? */
 #define TURTLE_SPRITE "triangle3.png"
 #define FONT_FILE "miscfixed.ttf"
 #define FONT_SIZE 12 /* in pt */
@@ -144,14 +143,12 @@ struct Turtle* TT_Create(int w, int h, int r, int g, int b)
     turt->isDrawing = false;
     turt->isVisible = true;
     turt->isFilling = false;
-    turt->onclick = NULL; /* sorry for the null pointer */
+    turt->onclick = NULL;
     turt->onkeyb = NULL;
 
     turt->surface = SDL_CreateRGBSurface(SDL_HWSURFACE, w, h, BITS_PER_PIXEL, 0, 0, 0, 0);
     turt->surfacePos.x = 0;
     turt->surfacePos.y = 0;
-
-    /* TODO find better sprite for cursor? */
 
     /* Error Control */
     if(turt->surface == NULL)
@@ -165,7 +162,6 @@ struct Turtle* TT_Create(int w, int h, int r, int g, int b)
 
     /* Init Surface */
     SDL_FillRect(turt->surface, NULL, turt->bgColor);
-    /*printf("Base: x=%d y=%d angle=%f\n", turt->x, turt->y, turt->angle);*/
 
     return turt;
 }
@@ -206,7 +202,6 @@ bool TT_MainLoop(struct Turtle* turt)
     if(ev.type == SDL_MOUSEBUTTONUP && ev.button.button == SDL_BUTTON_LEFT
             && turt->onclick != NULL)
     {
-        /*printf("Click @ x=%d y=%d\n", ev.button.x, ev.button.y);*/
         turt->onclick(ev.button.x, ev.button.y);
     }
 
@@ -300,8 +295,6 @@ void TT_MoveTo(struct Turtle* turt, int x, int y)
         exit(EXIT_FAILURE);
     }
 
-    /*printf("Destination: x=%d y=%d\n", x, y);*/
-
     /* Draw Line as Necessary */
     if(turt->isDrawing)
     {
@@ -320,8 +313,6 @@ void TT_MoveTo(struct Turtle* turt, int x, int y)
             /* Push Vertex */
             turt->fillX[turt->fillIndex] = x;
             turt->fillY[turt->fillIndex] = y;
-            /*printf("Push [%d, %d] to vertex array (count=%d; max=%d)\n",
-                   x, y, turt->fillIndex, turt->fillCount);*/
             turt->fillIndex ++;
         }
 
@@ -329,7 +320,6 @@ void TT_MoveTo(struct Turtle* turt, int x, int y)
         {
             /* Do Fill */
             filledPolygonColor(turt->surface, turt->fillX, turt->fillY, turt->fillCount, turt->fillColor);
-            /*printf("End fill");*/
             turt->isFilling = false;
             free(turt->fillX);
             free(turt->fillY);
@@ -345,7 +335,6 @@ void TT_MoveTo(struct Turtle* turt, int x, int y)
 void TT_Left(struct Turtle* turt, float deg)
 {
     turt->angle = mod(turt->angle - deg, 360.0f); /* clockwise */
-    /*printf("Angle: %f\n", turt->angle);*/
 }
 
 /**
@@ -356,7 +345,6 @@ void TT_Left(struct Turtle* turt, float deg)
 void TT_Right(struct Turtle* turt, float deg)
 {
     turt->angle = mod(turt->angle + deg, 360.0f); /* counterclockwise */
-    /*printf("Angle: %f\n", turt->angle);*/
 }
 
 /**
@@ -368,9 +356,7 @@ void TT_Forward(struct Turtle* turt, int distance)
 {
     /* Evaluate Dest Location from Polar Coordinates */
     double offset_x = distance * cos(abs(turt->angle) * RAD2DEG);
-    /*printf("offset_x=%f ", offset_x);*/
     double offset_y = distance * sin(abs(turt->angle) * RAD2DEG);
-    /*printf("offset_y=%f\n", offset_y);*/
 
     int x = turt->x + round(offset_x);
     int y = turt->y + round(offset_y);
@@ -490,6 +476,12 @@ void TT_WriteText(struct Turtle* turt, const char* str)
     SDL_FreeSurface(text);
 }
 
+/**
+ * Draws a circle whose center is radius units to the left
+ * of the turtle.
+ * @param turt
+ * @param radius
+ */
 void TT_Circle(struct Turtle* turt, int radius)
 {
     /* Center is R Units Left to Turtle */
@@ -498,7 +490,6 @@ void TT_Circle(struct Turtle* turt, int radius)
 
     int x = turt->x + round(offset_x);
     int y = turt->y + round(offset_y);
-    printf("Circle center is x=%d y=%d\n", x, y);
 
     if(x < 0 || y < 0 || x >= turt->surface->w || y >= turt->surface->h)
     {
@@ -509,6 +500,13 @@ void TT_Circle(struct Turtle* turt, int radius)
     Draw_Circle(turt->surface, x, y, radius, turt->color);
 }
 
+/**
+ * Draws a circle whose center is on the turtle. This function
+ * is not in the Turtle Graphics spirit and is provided for
+ * convenience.
+ * @param turt
+ * @param radius
+ */
 void TT_CenteredCircle(struct Turtle* turt, int radius)
 {
     Draw_Circle(turt->surface, turt->x, turt->y, radius, turt->color);
@@ -574,13 +572,9 @@ void TT_BeginFill(struct Turtle* turt, int count, Uint32 r, Uint32 g, Uint32 b)
         exit(EXIT_FAILURE);
     }
 
-    /*printf("Begin fill using r=%d g=%d b=%d\n", r, g, b);*/
-
     /* Push First Vertex */
     turt->fillX[0] = turt->x;
     turt->fillY[0] = turt->y;
-    /*printf("Push [%d, %d] to vertex array (count=%d; max=%d)\n",
-           turt->x, turt->y, 0, turt->fillCount);*/
 
     turt->isFilling = true;
     turt->fillIndex = 1;

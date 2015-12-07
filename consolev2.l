@@ -150,6 +150,19 @@ string      \"(\\.|[^"])*\"
 (\|\||or|ou)  { return TK_OR; }
 (not|pas)     { return TK_NOT; }
 
+(color|colour|couleur)  { return TK_COLOR; }
+(red|rouge)             { return TK_CL_RED; }
+(green|vert)            { return TK_CL_GREEN; }
+(blue|bleu)             { return TK_CL_BLUE; }
+(yellow|jaune)          { return TK_CL_YELLOW; }
+(teal|cyan)             { return TK_CL_TEAL; }
+(magenta)               { return TK_CL_MAGENTA; }
+(orange)                { return TK_CL_ORANGE; }
+(black|noir)            { return TK_CL_BLACK; }
+(white|blanc)           { return TK_CL_WHITE; }
+(grey|gray|gris)        { return TK_CL_GREY; }
+(silver|argent)         { return TK_CL_SILVER; }
+
 "cos"   { return TK_COS; }
 "sin"   { return TK_SIN; }
 "tan"   { return TK_TAN; }
@@ -191,7 +204,7 @@ string      \"(\\.|[^"])*\"
 "(" { return '('; }
 ")" { return ')'; }
 "," { return ','; }
-";" { return TK_NEWLINE; /* for debug */ }
+";" { return TK_NEWLINE; }
 
 <<EOF>> {
     yyterminate();
@@ -213,6 +226,7 @@ string      \"(\\.|[^"])*\"
 
 "*/"    { BEGIN(INITIAL); }
 <<EOF>> { yyerror(NULL, "malformed comment"); yyterminate(); }
+\n      { }
 .       { }
 
 }
@@ -253,7 +267,6 @@ struct ast_node* scan_file(char* name)
     
     errno = 0;
     char* buf = malloc(sizeof(char) * lg);
-    /*perror("malloc");*/
     if(buf == NULL)
     {
         fprintf(stderr, "*** FATAL: Unable to create buffer of %ld bytes: %s\n", lg, strerror(errno));
@@ -263,10 +276,6 @@ struct ast_node* scan_file(char* name)
     fread(buf, 1, lg, file);
     fclose(file);
     buf[lg] = '\0';
-    /*printf("%s\n", buf);*/
-    /*printf("buf[lg - 1] = %c\n", buf[lg - 1]);
-    printf("buf[lg] = %c\n", buf[lg]);
-    printf("buf[lg + 1] = %c\n", buf[lg + 1]);*/
     
     filebuf[filebufindex] = yy_scan_string(buf);
     if(buf != NULL)
@@ -276,7 +285,7 @@ struct ast_node* scan_file(char* name)
     filebufindex++;
     
     struct ast_node* ast = NULL;
-    yyparse(&ast); /* will this work? */
+    yyparse(&ast);
     
     yy_delete_buffer(filebuf[filebufindex - 1]);
     filebufindex--;

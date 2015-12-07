@@ -57,7 +57,7 @@ struct Turtle
     SDL_Surface* surface;           /* SDL surface for the turtle screen */
     SDL_Rect surfacePos;            /* surface coordinates on the screen */
     void (*onclick)(int, int);      /* click event handler func */
-    void (*onkeyb)(SDLKey, SDLMod); /* keyboard event handler func -- TODO avoid exposing SDL */
+    void (*onkeyb)(SDLKey, SDLMod); /* keyboard event handler func */
 };
 
 /**
@@ -211,8 +211,21 @@ void TT_HideTurtle(struct Turtle* turt);
  */
 void TT_WriteText(struct Turtle* turt, const char* str);
 
+/**
+ * Draws a circle whose center is radius units to the left
+ * of the turtle.
+ * @param turt
+ * @param radius
+ */
 void TT_Circle(struct Turtle* turt, int radius);
 
+/**
+ * Draws a circle whose center is on the turtle. This function
+ * is not in the Turtle Graphics spirit and is provided for
+ * convenience.
+ * @param turt
+ * @param radius
+ */
 void TT_CenteredCircle(struct Turtle* turt, int radius);
 
 /*
