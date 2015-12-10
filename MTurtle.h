@@ -124,6 +124,13 @@ void TT_EndProgram();
  */
 void TT_SetColor(struct Turtle* turt, Uint32 r, Uint32 g, Uint32 b);
 
+/**
+ * Sets the turtle's SDL surface position on the screen.
+ * For advanced users.
+ * @param turt
+ * @param x
+ * @param y
+ */
 void TT_SetSurfacePos(struct Turtle* turt, int x, int y);
 
 /**
