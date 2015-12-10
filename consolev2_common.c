@@ -447,7 +447,18 @@ void ast_run(struct exec_env* env, struct ast_node* ast)
     }
     else if(ast->type == AST_SHOWHELP)
     {
-        SDL_TerminalPrint(env->term, "Write me!\n");
+        SDL_TerminalPrint(env->term, "Available commands:\n"
+                          "exit: quit application\n"
+                          "fwd n: move forward from n pixels\n"
+                          "back n: move backward from n pixels\n"
+                          "left x: turn x degrees to the left\n"
+                          "right x: turn x degress to the right\n"
+                          "pendown: start drawing\n"
+                          "penup: start moving without drawing\n"
+                          "write x: put x as text at the turtle's current position\n"
+                          "hideturtle: hide cursor\n"
+                          "showturtle: show cursor\n"
+                          "Please see the README file for advanced syntax\n");
     }
     else if(ast->type == AST_ECHO)
     {
@@ -1024,7 +1035,7 @@ char* ast_eval_as_string(struct exec_env* env, struct ast_node* ast)
     else
     {
         float fltval = ast_eval_as_float(env, ast);
-        sprintf(str, "%f", fltval);
+        sprintf(str, "%g", fltval);
     }
     
     return str;
